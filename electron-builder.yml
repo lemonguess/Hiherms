@@ -1,0 +1,18 @@
+appId: com.hermes.desktop
+productName: Hermes Desktop
+directories:
+  output: release
+files:
+  - dist/**/*
+  - package.json
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Utility
+  icon: assets/icon.png
+mac:
+  target: dmg
+  category: public.app-category.utilities
+win:
+  target: nsis

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HiHermes Pet</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      overflow: hidden;
+      cursor: grab;
+      user-select: none;
+      -webkit-app-region: drag;
+    }
+
+    body:active {
+      cursor: grabbing;
+    }
+
+    #pet-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    #pet-sprite {
+      width: 128px;
+      height: 128px;
+      image-rendering: pixelated;
+      transition: transform 0.15s ease-out;
+      pointer-events: none;
+    }
+
+    /* Idle breathing animation */
+    @keyframes breathe {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+
+    /* Wake bounce animation */
+    @keyframes wakeBounce {
+      0% { transform: translateY(0) scale(1); }
+      20% { transform: translateY(-8px) scale(1.1); }
+      40% { transform: translateY(0) scale(1.05); }
+      60% { transform: translateY(-4px) scale(1.08); }
+      100% { transform: translateY(0) scale(1); }
+    }
+
+    /* Speak animation (subtle bob + mouth movement via frame swap) */
+    @keyframes speakBob {
+      0%, 100% { transform: translateY(0); }
+      25% { transform: translateY(-2px); }
+      75% { transform: translateY(1px); }
+    }
+
+    /* Sleep sway */
+    @keyframes sleepSway {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      25% { transform: translateY(2px) rotate(-1deg); }
+      75% { transform: translateY(2px) rotate(1deg); }
+    }
+
+    /* Glow effect for wake state */
+    @keyframes glowPulse {
+      0%, 100% { filter: drop-shadow(0 0 4px rgba(180, 210, 255, 0.6)); }
+      50% { filter: drop-shadow(0 0 12px rgba(180, 210, 255, 0.9)); }
+    }
+
+    /* Status text overlay */
+    #status-text {
+      position: absolute;
+      bottom: 5px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Microsoft YaHei', sans-serif;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.7);
+      text-shadow: 0 0 4px rgba(0,0,0,0.8);
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    #status-text.visible {
+      opacity: 1;
+    }
+
+    /* Context menu hint */
+    #hint {
+      position: absolute;
+      top: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 9px;
+      color: rgba(255,255,255,0.3);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="pet-container">
+    <img id="pet-sprite" src="" alt="2B" />
+    <div id="status-text"></div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    // === State Management ===
+    const State = {
+      IDLE: 'idle',
+      WAKE: 'wake',
+      SPEAK: 'speak',
+      SLEEP: 'sleep',
+    };
+
+    let currentState = State.IDLE;
+    let idleFrame = 0;
+    let idleTimer = null;
+    let statusTimer = null;
+
+    const sprite = document.getElementById('pet-sprite');
+    const statusText = document.getElementById('status-text');
+
+    // Asset paths (adjust based on build)
+    const ASSETS = {
+      idle1: '../assets/pet-idle-1.png',
+      idle2: '../assets/pet-idle-2.png',
+      wake1: '../assets/pet-wake-1.png',
+      wake2: '../assets/pet-wake-2.png',
+      speak1: '../assets/pet-speak-1.png',
+      speak2: '../assets/pet-speak-2.png',
+      sleep: '../assets/pet-sleep.png',
+    };
+
+    // === Sprite Management ===
+    function setSprite(src) {
+      sprite.src = src;
+    }
+
+    function startIdleAnimation() {
+      stopAnimations();
+      currentState = State.IDLE;
+      idleFrame = 0;
+      sprite.style.animation = 'breathe 2.5s ease-in-out infinite';
+      setSprite(ASSETS.idle1);
+
+      idleTimer = setInterval(() => {
+        idleFrame = (idleFrame + 1) % 2;
+        setSprite(idleFrame === 0 ? ASSETS.idle1 : ASSETS.idle2);
+      }, 1200);
+    }
+
+    function startWakeAnimation() {
+      stopAnimations();
+      currentState = State.WAKE;
+      sprite.style.animation = 'wakeBounce 0.6s ease-out forwards, glowPulse 1.5s ease-in-out infinite';
+      setSprite(ASSETS.wake1);
+
+      setTimeout(() => {
+        if (currentState === State.WAKE) {
+          setSprite(ASSETS.wake2);
+          showStatus('我在听~');
+        }
+      }, 300);
+    }
+
+    function startSpeakAnimation() {
+      stopAnimations();
+      currentState = State.SPEAK;
+      sprite.style.animation = 'speakBob 0.4s ease-in-out infinite, glowPulse 1.5s ease-in-out infinite';
+      setSprite(ASSETS.speak1);
+
+      // Alternate speak frames
+      let speakFrame = 0;
+      idleTimer = setInterval(() => {
+        speakFrame = (speakFrame + 1) % 2;
+        setSprite(speakFrame === 0 ? ASSETS.speak1 : ASSETS.speak2);
+      }, 300);
+    }
+
+    function startSleepAnimation() {
+      stopAnimations();
+      currentState = State.SLEEP;
+      sprite.style.animation = 'sleepSway 3s ease-in-out infinite';
+      setSprite(ASSETS.sleep);
+    }
+
+    function stopAnimations() {
+      if (idleTimer) {
+        clearInterval(idleTimer);
+        idleTimer = null;
+      }
+      sprite.style.animation = '';
+    }
+
+    function showStatus(text, duration = 2000) {
+      statusText.textContent = text;
+      statusText.classList.add('visible');
+      if (statusTimer) clearTimeout(statusTimer);
+      statusTimer = setTimeout(() => {
+        statusText.classList.remove('visible');
+      }, duration);
+    }
+
+    // === IPC Event Handlers ===
+    ipcRenderer.on('pet-state', (event, state) => {
+      switch (state) {
+        case 'idle': startIdleAnimation(); break;
+        case 'wake': startWakeAnimation(); break;
+        case 'speak': startSpeakAnimation(); break;
+        case 'sleep': startSleepAnimation(); break;
+      }
+    });
+
+    ipcRenderer.on('pet-status', (event, text) => {
+      showStatus(text);
+    });
+
+    // === Interaction ===
+    let clickTimer = null;
+    let clickCount = 0;
+
+    sprite.addEventListener('click', (e) => {
+      clickCount++;
+      if (clickTimer) clearTimeout(clickTimer);
+
+      clickTimer = setTimeout(() => {
+        if (clickCount === 2) {
+          // Double-click → open chat window
+          ipcRenderer.send('pet-double-click');
+        } else {
+          // Single click → wake if sleeping
+          ipcRenderer.send('pet-click');
+        }
+        clickCount = 0;
+      }, 300);
+    });
+
+    // Drag to move window
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0 };
+
+    document.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      dragStart = { x: e.screenX, y: e.screenY };
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        const dx = e.screenX - dragStart.x;
+        const dy = e.screenY - dragStart.y;
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+          ipcRenderer.send('pet-drag', { dx, dy });
+          dragStart = { x: e.screenX, y: e.screenY };
+        }
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    // Context menu
+    document.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      ipcRenderer.send('pet-context-menu');
+    });
+
+    // === Init ===
+    startIdleAnimation();
+    console.log('[Pet] 2B chibi ready!');
+  </script>
+</body>
+</html>
