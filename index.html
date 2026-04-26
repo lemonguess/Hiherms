@@ -26,6 +26,12 @@
               return () => ipcRenderer.removeListener('settings:updated', h);
             },
             openImageDialog: () => ipcRenderer.invoke('dialog:open-image'),
+            playTTS: (t) => ipcRenderer.invoke('hermes:voice-play', t),
+            onShowSettings: (cb) => {
+              const h = () => cb();
+              ipcRenderer.on('show-settings', h);
+              return () => ipcRenderer.removeListener('show-settings', h);
+            }
           };
         } catch(e) { console.warn('Electron API init failed:', e); }
       }

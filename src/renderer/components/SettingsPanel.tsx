@@ -14,13 +14,16 @@ export default function SettingsPanel({ onClose }: { onClose?: () => void }) {
   const update = (partial: Partial<AppSettings>) => {
     const next = { ...settings, ...partial };
     setSettings(next);
-    window.hermesAPI.setSettings(partial);
+  };
+
+  const saveSettings = () => {
+    window.hermesAPI.setSettings(settings);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
   return (
-    <div style={{ padding: 24, fontFamily: 'Microsoft YaHei, sans-serif', color: '#e0e0e0', background: '#0d1117', minHeight: '100vh' }}>
+    <div style={{ padding: 24, fontFamily: 'Microsoft YaHei, sans-serif', color: '#e0e0e0', background: '#0d1117', height: '100vh', overflowY: 'auto', boxSizing: 'border-box' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h2 style={{ margin: 0, color: '#58a6ff' }}>⚙️ HiHermes 设置</h2>
         {saved && <span style={{ color: '#3fb950', fontSize: 13 }}>✓ 已保存</span>}
@@ -28,19 +31,10 @@ export default function SettingsPanel({ onClose }: { onClose?: () => void }) {
       </div>
 
       <Section title="🔗 Hermes 连接">
-        <Label>后端模式</Label>
-        <select value={settings.backend} onChange={e => update({ backend: e.target.value as any })} style={inputStyle}>
-          <option value="api-server">🌐 API Server (HTTP)</option>
-          <option value="wsl-cli">🐧 WSL CLI</option>
-        </select>
-        {settings.backend === 'api-server' && (
-          <>
-            <Label>服务器地址</Label>
-            <input value={settings.apiServerUrl} onChange={e => update({ apiServerUrl: e.target.value })} style={inputStyle} placeholder="http://localhost:8642" />
-            <Label>API Key (可选)</Label>
-            <input type="password" value={settings.apiServerKey} onChange={e => update({ apiServerKey: e.target.value })} style={inputStyle} />
-          </>
-        )}
+        <Label>服务器地址</Label>
+        <input value={settings.apiServerUrl} onChange={e => update({ apiServerUrl: e.target.value })} style={inputStyle} placeholder="http://localhost:8642" />
+        <Label>API Key (如果不需要鉴权可以留空)</Label>
+        <input type="password" value={settings.apiServerKey} onChange={e => update({ apiServerKey: e.target.value })} style={inputStyle} placeholder="sk-..." />
       </Section>
 
       <Section title="🎤 语音唤醒">
@@ -58,9 +52,9 @@ export default function SettingsPanel({ onClose }: { onClose?: () => void }) {
           ))}
         </select>
         <Label>语速: {settings.ttsRate}</Label>
-        <input type="range" min="-20" max="20" step="10" value={parseInt(settings.ttsRate)} onChange={e => update({ ttsRate: `${e.target.value > 0 ? '+' : ''}${e.target.value}%` })} style={{ width: '100%' }} />
+        <input type="range" min="-20" max="20" step="10" value={parseInt(settings.ttsRate)} onChange={e => update({ ttsRate: `${Number(e.target.value) > 0 ? '+' : ''}${e.target.value}%` })} style={{ width: '100%' }} />
         <Label>音量: {settings.ttsVolume}</Label>
-        <input type="range" min="-50" max="50" step="10" value={parseInt(settings.ttsVolume)} onChange={e => update({ ttsVolume: `${e.target.value > 0 ? '+' : ''}${e.target.value}%` })} style={{ width: '100%' }} />
+        <input type="range" min="-50" max="50" step="10" value={parseInt(settings.ttsVolume)} onChange={e => update({ ttsVolume: `${Number(e.target.value) > 0 ? '+' : ''}${e.target.value}%` })} style={{ width: '100%' }} />
       </Section>
 
       <Section title="🖥️ 其他">
@@ -69,6 +63,15 @@ export default function SettingsPanel({ onClose }: { onClose?: () => void }) {
           开机自启
         </label>
       </Section>
+
+      <div style={{ marginTop: 30, display: 'flex', justifyContent: 'center' }}>
+        <button 
+          onClick={saveSettings} 
+          style={{ ...btnStyle, background: '#238636', borderColor: 'rgba(240,246,252,0.1)', padding: '8px 32px', fontSize: 15 }}
+        >
+          保存设置
+        </button>
+      </div>
     </div>
   );
 }
@@ -82,7 +85,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Label({ children }: { children: string }) {
+function Label({ children }: { children: React.ReactNode }) {
   return <div style={{ fontSize: 12, color: '#8b949e', marginBottom: 4, marginTop: 10 }}>{children}</div>;
 }
 

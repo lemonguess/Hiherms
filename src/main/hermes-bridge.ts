@@ -1,11 +1,25 @@
 // Hermes Bridge — Connects desktop pet to Hermes AI
 //
 // Primary: HTTP to Hermes API Server (/v1/chat/completions)
-// Fallback: WSL CLI (wsl hermes chat -Q -q)
 
 import { EventEmitter } from 'events';
-import { spawn, ChildProcess } from 'child_process';
-import { HermesRequest, HermesResponse, MediaAttachment, AppSettings, HermesBackend } from '../shared/types';
+import { HermesRequest, HermesResponse, MediaAttachment, AppSettings } from '../shared/types';
+
+class ApiServerHttpError extends Error {
+  statusCode: number;
+  responseBody: string;
+  requestUrl: string;
+  requestPath: string;
+
+  constructor(message: string, statusCode: number, responseBody: string, requestUrl: string, requestPath: string) {
+    super(message);
+    this.name = 'ApiServerHttpError';
+    this.statusCode = statusCode;
+    this.responseBody = responseBody;
+    this.requestUrl = requestUrl;
+    this.requestPath = requestPath;
+  }
+}
 
 export class HermesBridge extends EventEmitter {
   private currentSessionId: string | null = null;
@@ -28,21 +42,53 @@ export class HermesBridge extends EventEmitter {
 
   // === Main send interface ===
   async sendMessage(request: HermesRequest): Promise<HermesResponse> {
-    // Always try API Server first; fallback to WSL if unreachable
     try {
       return await this.sendViaApiServer(request);
     } catch (err: any) {
-      console.warn('[Bridge] API Server failed, trying WSL:', err.message);
-      try {
-        return await this.sendViaWsl(request);
-      } catch (wslErr: any) {
-        return {
-          id: request.id,
-          content: '',
-          sessionId: this.currentSessionId || '',
-          error: `Hermes 连接失败 (API: ${err.message}, WSL: ${wslErr.message})`,
-        };
+      const isHttpError = err instanceof ApiServerHttpError;
+      const details: Record<string, any> = {
+        message: err?.message,
+        sessionId: this.currentSessionId || '',
+        hasApiServerKey: !!this.apiServerKey,
+      };
+      if (isHttpError) {
+        details.statusCode = err.statusCode;
+        details.path = err.requestPath;
+        details.url = err.requestUrl;
+        details.responseBodyPreview = err.responseBody.slice(0, 800);
       }
+      console.error('[Bridge] API Server failed:', details);
+
+      let friendlyError = err.message;
+      if (isHttpError) {
+        try {
+          const parsed = JSON.parse(err.responseBody);
+          if (parsed.error && parsed.error.message) {
+            friendlyError = parsed.error.message;
+          }
+        } catch (e) {
+          // Keep original error message if JSON parsing fails
+        }
+      }
+
+      if (friendlyError.includes('Insufficient Balance') || err.message.includes('402')) {
+        friendlyError = `调用失败 (HTTP 402)：模型服务商余额不足，请检查您的 API Key 账号余额。`;
+      } else if (friendlyError.includes('Session continuation requires API key authentication') || (err.message.includes('403') && !this.apiServerKey)) {
+        friendlyError = `会话续传失败 (HTTP 403)：在当前 API Server 配置下，连续对话需要填写您的专属 API Key。请在设置中补充 API Key。`;
+      } else if (friendlyError.includes('401') || friendlyError.includes('unauthorized') || err.message.includes('401')) {
+        friendlyError = `鉴权失败 (HTTP 401)：请检查设置中的 API Key 是否正确填写。`;
+      } else if (err.message.includes('ECONNREFUSED')) {
+        friendlyError = `连接失败：无法连接到 API Server (${this.apiServerUrl})，请确保后端服务已启动。`;
+      } else {
+        friendlyError = `Hermes 连接失败 (API: ${friendlyError})`;
+      }
+
+      return {
+        id: request.id,
+        content: '',
+        sessionId: this.currentSessionId || '',
+        error: friendlyError,
+      };
     }
   }
 
@@ -68,21 +114,38 @@ export class HermesBridge extends EventEmitter {
       }
     }
 
+    const messagesArray: any[] = [];
+    
+    if (request.history && request.history.length > 0) {
+      for (const msg of request.history) {
+        if (msg.role !== 'system') {
+          messagesArray.push({
+            role: msg.role,
+            content: msg.content,
+          });
+        }
+      }
+    }
+
+    messagesArray.push({
+      role: 'user',
+      content: userContent.length === 1 && userContent[0].type === 'text'
+        ? userContent[0].text   // Text-only: send as plain string
+        : userContent,           // Multimodal: send as array
+    });
+
     const body: any = {
       model: 'hermes-agent',
-      messages: [{
-        role: 'user',
-        content: userContent.length === 1 && userContent[0].type === 'text'
-          ? userContent[0].text   // Text-only: send as plain string
-          : userContent,           // Multimodal: send as array
-      }],
+      messages: messagesArray,
       stream: false,
     };
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    if (this.currentSessionId) {
+    
+    // Only send Session ID if we have an API key, as Hermes Agent requires authentication for session continuation
+    if (this.currentSessionId && this.apiServerKey) {
       headers['X-Hermes-Session-Id'] = this.currentSessionId;
     }
     if (this.apiServerKey) {
@@ -90,6 +153,13 @@ export class HermesBridge extends EventEmitter {
     }
 
     console.log('[Bridge] POST', url);
+    console.log('[Bridge] Request summary', {
+      messageId: request.id,
+      messageLength: request.message?.length || 0,
+      mediaCount: request.media?.length || 0,
+      hasSessionHeader: !!this.currentSessionId,
+      hasAuthHeader: !!this.apiServerKey,
+    });
 
     const res = await this.httpPost(url, body, headers);
     const data = JSON.parse(res);
@@ -109,23 +179,6 @@ export class HermesBridge extends EventEmitter {
       content,
       sessionId,
     };
-  }
-
-  // === WSL CLI Mode (fallback) ===
-  private async sendViaWsl(request: HermesRequest): Promise<HermesResponse> {
-    const escaped = this.escapeShell(request.message);
-    let cmd: string;
-
-    if (this.currentSessionId) {
-      cmd = `hermes --resume ${this.currentSessionId} chat -Q -q ${escaped}`;
-    } else {
-      cmd = `hermes chat -Q -q ${escaped}`;
-    }
-
-    const output = await this.execWsl(cmd);
-    const result = this.parseCliOutput(output, request.id);
-    if (result.sessionId) this.currentSessionId = result.sessionId;
-    return result;
   }
 
   // === HTTP helpers ===
@@ -152,7 +205,13 @@ export class HermesBridge extends EventEmitter {
         res.on('data', (chunk: string) => { data += chunk; });
         res.on('end', () => {
           if (res.statusCode >= 400) {
-            reject(new Error(`HTTP ${res.statusCode}: ${data.slice(0, 200)}`));
+            reject(new ApiServerHttpError(
+              `HTTP ${res.statusCode}: ${data.slice(0, 200)}`,
+              res.statusCode,
+              data,
+              url,
+              options.path
+            ));
           } else {
             resolve(data);
           }
@@ -164,75 +223,6 @@ export class HermesBridge extends EventEmitter {
       req.write(bodyStr);
       req.end();
     });
-  }
-
-  // === WSL helpers ===
-  private execWsl(command: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const proc: ChildProcess = spawn('wsl.exe', ['bash', '-c', command], {
-        env: { ...process.env },
-      });
-
-      let stdout = '';
-      let stderr = '';
-
-      proc.stdout?.on('data', (d: Buffer) => { stdout += d.toString(); });
-      proc.stderr?.on('data', (d: Buffer) => { stderr += d.toString(); });
-
-      const timer = setTimeout(() => {
-        proc.kill();
-        reject(new Error('WSL command timed out'));
-      }, 120000);
-
-      proc.on('close', (code) => {
-        clearTimeout(timer);
-        if (code === 0 || stdout.length > 0) {
-          resolve(stdout);
-        } else {
-          reject(new Error(stderr || `WSL exit code ${code}`));
-        }
-      });
-
-      proc.on('error', (err) => {
-        clearTimeout(timer);
-        reject(err);
-      });
-    });
-  }
-
-  // Remove ANSI codes, box-drawing, noise from CLI output
-  private parseCliOutput(output: string, requestId: string): HermesResponse {
-    let cleaned = output
-      .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')
-      .replace(/\r/g, '');
-
-    let sessionId = this.currentSessionId || '';
-    const sm = cleaned.match(/[Ss]ession:\s+([a-zA-Z0-9_-]+)/);
-    if (sm) sessionId = sm[1];
-
-    // Extract content between Hermes box lines
-    const boxMatch = cleaned.match(/╭─[^╮]*╮\n([\s\S]*?)\n╰─+[^╯]*╯/);
-    let content = '';
-    if (boxMatch) {
-      content = boxMatch[1]
-        .split('\n')
-        .map(l => l.replace(/^[│\s]*/, '').trimEnd())
-        .filter(l => l.length > 0)
-        .join('\n')
-        .trim();
-    } else {
-      // Fallback: strip noise
-      const noise = [/^╭─+/, /^╰─+/, /^│\s*$/, /^│\s*(Model|Session|Duration|Messages):/, /^─{10,}/, /^\s*$/];
-      content = cleaned.split('\n')
-        .filter(l => !noise.some(p => p.test(l.trim())))
-        .join('\n').trim();
-    }
-
-    return { id: requestId, content: content || '(no response)', sessionId };
-  }
-
-  private escapeShell(str: string): string {
-    return `'${str.replace(/'/g, "'\\''")}'`;
   }
 
   // === Session management ===

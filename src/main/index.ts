@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 import { HermesBridge } from './hermes-bridge';
 import { SettingsStore } from './settings-store';
+import { TTSEngine } from './tts-engine';
 import { registerIpcHandlers } from './ipc-handlers';
 import { PetWindow } from './pet-window';
 import { IPC_CHANNELS } from '../shared/types';
@@ -9,12 +10,18 @@ import { IPC_CHANNELS } from '../shared/types';
 let chatWindow: BrowserWindow | null = null;
 let hermesBridge: HermesBridge;
 let settingsStore: SettingsStore;
+let ttsEngine: TTSEngine;
 let petWindow: PetWindow;
 
 const isDev = process.env.NODE_ENV !== 'production' || !app.isPackaged;
 const startMode = process.env.HIMERS_MODE || 'pet';
 
 function createChatWindow(): void {
+  if (chatWindow && !chatWindow.isDestroyed()) {
+    chatWindow.focus();
+    return;
+  }
+
   const { screen } = require('electron');
   const { width: screenW, height: screenH } = screen.getPrimaryDisplay().workAreaSize;
 
@@ -46,13 +53,37 @@ app.whenReady().then(() => {
   // Initialize core services
   settingsStore = new SettingsStore();
   hermesBridge = new HermesBridge();
-  registerIpcHandlers(hermesBridge);
+  
+  const s = settingsStore.getAll();
+  ttsEngine = new TTSEngine({
+    voice: s.ttsVoice,
+    rate: s.ttsRate,
+    pitch: s.ttsPitch,
+    volume: s.ttsVolume,
+  });
+
+  ttsEngine.on('error', (err) => {
+    console.error('[TTS Global Error]:', err);
+  });
+
+  registerIpcHandlers(hermesBridge, ttsEngine);
+
+  // Listen for settings changes to update global components
+  ipcMain.on(IPC_CHANNELS.SETTINGS_UPDATED, (_e, newSettings) => {
+    ttsEngine.reconfigure({
+      voice: newSettings.ttsVoice,
+      rate: newSettings.ttsRate,
+      pitch: newSettings.ttsPitch,
+      volume: newSettings.ttsVolume,
+    });
+    hermesBridge.configure(newSettings);
+  });
 
   // Apply saved settings
-  hermesBridge.configure(settingsStore.getAll());
+  hermesBridge.configure(s);
 
   if (startMode === 'pet') {
-    petWindow = new PetWindow(hermesBridge, settingsStore);
+    petWindow = new PetWindow(hermesBridge, settingsStore, ttsEngine);
     petWindow.start();
   } else {
     createChatWindow();
@@ -61,7 +92,7 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       if (startMode === 'pet') {
-        petWindow = new PetWindow(hermesBridge, settingsStore);
+        petWindow = new PetWindow(hermesBridge, settingsStore, ttsEngine);
         petWindow.start();
       } else {
         createChatWindow();

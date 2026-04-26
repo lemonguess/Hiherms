@@ -1,11 +1,12 @@
 // TTS Engine — Edge TTS sentence-level streaming
-// Synthesizes via edge-tts CLI, plays via system audio player
+// Synthesizes via Node.js msedge-tts package, plays via system audio player
 
 import { exec, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+const { MsEdgeTTS, OUTPUT_FORMAT } = require('msedge-tts');
 
 export interface TTSOptions {
   voice?: string;       // edge-tts voice name
@@ -57,6 +58,8 @@ export class TTSEngine extends EventEmitter {
   async speak(text: string): Promise<void> {
     if (!text || text.trim().length === 0) return;
 
+    this.stop(); // Stop any existing playback immediately
+
     const sentences = this.splitSentences(text);
     if (sentences.length === 0) return;
 
@@ -64,6 +67,7 @@ export class TTSEngine extends EventEmitter {
     this.emit('start', { text, sentenceCount: sentences.length });
 
     for (let i = 0; i < sentences.length; i++) {
+      if (!this.speaking) break; // Break if interrupted
       const sentence = sentences[i];
       this.emit('sentence-start', { index: i, total: sentences.length, text: sentence });
 
@@ -71,42 +75,49 @@ export class TTSEngine extends EventEmitter {
         await this.speakOne(sentence);
         this.emit('sentence-end', { index: i, total: sentences.length });
       } catch (err: any) {
+        if (!this.speaking) break; // If killed, ignore error
         this.emit('error', { index: i, error: err.message, text: sentence });
       }
     }
 
-    this.speaking = false;
-    this.emit('end');
+    if (this.speaking) {
+      this.speaking = false;
+      this.emit('end');
+    }
   }
 
   private speakOne(text: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const tmpFile = path.join(this.options.tmpDir, `tts-${Date.now()}.mp3`);
+    return new Promise(async (resolve, reject) => {
+      // msedge-tts `toFile` creates the file named `audio.mp3` inside the directory we provide
+      const tmpDir = fs.mkdtempSync(path.join(this.options.tmpDir, 'tts-'));
+      const audioFilePath = path.join(tmpDir, 'audio.mp3');
 
-      const escaped = text
-        .replace(/"/g, '\\"')
-        .replace(/`/g, '\\`')
-        .replace(/[\u0000-\u001f]/g, '');  // strip control chars
+      try {
+        const tts = new MsEdgeTTS();
+        await tts.setMetadata(
+          this.options.voice, 
+          OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3, 
+          this.options.pitch, 
+          this.options.rate, 
+          this.options.volume
+        );
+        
+        await tts.toFile(tmpDir, text);
 
-      const cmd = [
-        'edge-tts',
-        `--voice "${this.options.voice}"`,
-        `--rate "${this.options.rate}"`,
-        `--pitch "${this.options.pitch}"`,
-        `--volume "${this.options.volume}"`,
-        `--text "${escaped}"`,
-        `--write-media "${tmpFile}"`,
-      ].join(' ');
-
-      const proc = exec(cmd, { timeout: 15000, windowsHide: true }, (err) => {
-        if (err) { reject(err); return; }
-        this.playFile(tmpFile).then(() => {
-          fs.unlink(tmpFile, () => {});
+        if (!this.speaking) {
+          try { fs.unlinkSync(audioFilePath); fs.rmdirSync(tmpDir); } catch {}
           resolve();
-        }).catch(reject);
-      });
+          return;
+        }
 
-      this.currentProcess = proc;
+        await this.playFile(audioFilePath);
+        try { fs.unlinkSync(audioFilePath); fs.rmdirSync(tmpDir); } catch {}
+        resolve();
+      } catch (err: any) {
+        try { fs.unlinkSync(audioFilePath); fs.rmdirSync(tmpDir); } catch {}
+        if (!this.speaking) { resolve(); return; }
+        reject(new Error(`Edge-TTS Network Error: ${err.message}`));
+      }
     });
   }
 
@@ -124,7 +135,7 @@ export class TTSEngine extends EventEmitter {
       }
 
       const proc = exec(cmd, { timeout: 30000, windowsHide: true }, (err) => {
-        if (err) reject(err);
+        if (err && this.speaking) reject(err);
         else resolve();
       });
 
@@ -136,7 +147,11 @@ export class TTSEngine extends EventEmitter {
 
   stop(): void {
     if (this.currentProcess) {
-      this.currentProcess.kill();
+      if (isWindows && this.currentProcess.pid) {
+        exec(`taskkill /pid ${this.currentProcess.pid} /t /f`, () => {});
+      } else {
+        this.currentProcess.kill();
+      }
       this.currentProcess = null;
     }
     this.speaking = false;

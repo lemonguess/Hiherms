@@ -1,8 +1,9 @@
 import { ipcMain, dialog } from 'electron';
 import { HermesBridge } from './hermes-bridge';
+import { TTSEngine } from './tts-engine';
 import { HermesRequest, IPC_CHANNELS } from '../shared/types';
 
-export function registerIpcHandlers(bridge: HermesBridge): void {
+export function registerIpcHandlers(bridge: HermesBridge, ttsEngine: TTSEngine): void {
   // Send a message to Hermes
   ipcMain.handle(
     IPC_CHANNELS.SEND_MESSAGE,
@@ -30,6 +31,18 @@ export function registerIpcHandlers(bridge: HermesBridge): void {
   ipcMain.handle(IPC_CHANNELS.NEW_SESSION, async () => {
     bridge.newSession();
     return { success: true };
+  });
+
+  // TTS Playback
+  ipcMain.handle(IPC_CHANNELS.VOICE_PLAY, async (_event, text: string) => {
+    try {
+      // Don't wait for speak to finish, just return success once started
+      // TTSEngine will handle interruption internally if speak is called again
+      ttsEngine.speak(text).catch(err => console.error('[IPC TTS Error]', err));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   });
 
   // Session update events from bridge

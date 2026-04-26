@@ -55,18 +55,8 @@ export function useVoice() {
 
   const playAudio = useCallback(async (text: string) => {
     try {
-      // Use browser's built-in Speech Synthesis for TTS
-      if ('speechSynthesis' in window) {
-        return new Promise<void>((resolve) => {
-          const utterance = new SpeechSynthesisUtterance(text);
-          utterance.lang = 'zh-CN';
-          utterance.rate = 1.0;
-          utterance.pitch = 1.0;
-          utterance.onend = () => resolve();
-          utterance.onerror = () => resolve();
-          window.speechSynthesis.speak(utterance);
-        });
-      }
+      // Use IPC to call the Edge TTS engine in the main process
+      await window.hermesAPI.playTTS(text);
     } catch (error) {
       console.error('TTS failed:', error);
     }

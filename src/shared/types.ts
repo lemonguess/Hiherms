@@ -21,6 +21,7 @@ export interface HermesRequest {
   message: string;
   media?: MediaAttachment[];
   sessionId?: string;
+  history?: ChatMessage[];
 }
 
 export interface HermesResponse {
@@ -33,11 +34,8 @@ export interface HermesResponse {
 
 // ===== App Settings =====
 
-export type HermesBackend = 'api-server' | 'wsl-cli';
-
 export interface AppSettings {
   // Hermes connection
-  backend: HermesBackend;
   apiServerUrl: string;        // e.g. http://localhost:8642
   apiServerKey: string;        // API_SERVER_KEY if set
 
@@ -58,7 +56,6 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  backend: 'api-server',
   apiServerUrl: 'http://localhost:8642',
   apiServerKey: '',
 

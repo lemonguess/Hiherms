@@ -40,7 +40,13 @@ export default function App() {
     }]);
 
     try {
-      const response = await sendMessage(text, media);
+      // Exclude system messages, the initial welcome message, and the current placeholder
+      const validHistory = messages.filter(m => 
+        m.role !== 'system' && 
+        m.id !== 'welcome' && 
+        m.id !== placeholderId
+      );
+      const response = await sendMessage(text, media, validHistory);
       setMessages(prev => prev.map(msg =>
         msg.id === placeholderId ? { ...msg, content: response.content, sessionId: response.sessionId } : msg
       ));
@@ -72,6 +78,15 @@ export default function App() {
   const handlePlayTTS = useCallback(async (text: string) => {
     try { await playAudio(text); } catch (error) { console.error('TTS failed:', error); }
   }, [playAudio]);
+
+  React.useEffect(() => {
+    if (window.hermesAPI && window.hermesAPI.onShowSettings) {
+      const unsubscribe = window.hermesAPI.onShowSettings(() => {
+        setShowSettings(true);
+      });
+      return unsubscribe;
+    }
+  }, []);
 
   if (showSettings) {
     return <SettingsPanel onClose={() => setShowSettings(false)} />;

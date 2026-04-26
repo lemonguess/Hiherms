@@ -19,18 +19,12 @@ export class PetWindow {
   private settingsStore: SettingsStore;
   private petState: 'idle' | 'wake' | 'speak' | 'sleep' = 'idle';
 
-  constructor(hermesBridge: HermesBridge, settingsStore: SettingsStore) {
+  constructor(hermesBridge: HermesBridge, settingsStore: SettingsStore, ttsEngine: TTSEngine) {
     this.hermes = hermesBridge;
     this.settingsStore = settingsStore;
+    this.tts = ttsEngine;
 
     const s = settingsStore.getAll();
-
-    this.tts = new TTSEngine({
-      voice: s.ttsVoice,
-      rate: s.ttsRate,
-      pitch: s.ttsPitch,
-      volume: s.ttsVolume,
-    });
 
     this.sherpa = new SherpaEngine({
       wakeWords: s.wakeWords,
@@ -188,13 +182,17 @@ export class PetWindow {
       },
     });
 
-    // In dev, load vite; in prod, load a dedicated settings page
     const isDev = process.env.NODE_ENV !== 'production';
     if (isDev) {
-      this.settingsWin.loadURL('http://localhost:5173/#/settings');
+      this.settingsWin.loadURL('http://localhost:5173/');
     } else {
-      this.settingsWin.loadFile(path.join(__dirname, '../renderer/settings/index.html'));
+      this.settingsWin.loadFile(path.join(__dirname, '../renderer/index.html'));
     }
+    
+    // We send a message to tell the renderer to show the settings panel
+    this.settingsWin.webContents.on('did-finish-load', () => {
+      this.settingsWin?.webContents.send('show-settings');
+    });
     this.settingsWin.on('closed', () => { this.settingsWin = null; });
   }
 

@@ -9,8 +9,8 @@
     "dev": "npm run download-model && concurrently -k \"npm run dev:main\" \"npm run dev:renderer\" \"npm run dev:electron\"",
     "dev:main": "tsc -p tsconfig.node.json --watch",
     "dev:renderer": "vite",
-    "dev:electron": "wait-on http://localhost:5173 && cross-env HIMERS_MODE=pet electron .",
-    "dev:chat": "npm run download-model && wait-on http://localhost:5173 && cross-env HIMERS_MODE=chat electron .",
+    "dev:electron": "wait-on http://localhost:5173 && cross-env HIMERS_MODE=pet npx nodemon --watch dist/main --exec \"electron .\"",
+    "dev:chat": "npm run download-model && wait-on http://localhost:5173 && cross-env HIMERS_MODE=chat npx nodemon --watch dist/main --exec \"electron .\"",
     "dev:web": "vite --host 0.0.0.0",
     "build": "npm run build:main && npm run build:renderer",
     "build:main": "tsc -p tsconfig.node.json",
@@ -23,6 +23,7 @@
     "sprites": "python3 scripts/gen_sprites.py"
   },
   "dependencies": {
+    "msedge-tts": "^2.0.5",
     "node-pty": "^1.0.0",
     "sherpa-onnx-node": "^1.12.40",
     "uuid": "^9.0.0"
@@ -37,6 +38,7 @@
     "cross-env": "^7.0.3",
     "electron": "^33.0.0",
     "electron-builder": "^24.9.0",
+    "nodemon": "^3.1.14",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "typescript": "^5.3.0",

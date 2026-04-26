@@ -10,6 +10,8 @@ declare global {
       newSession(): Promise<{ success: boolean }>;
       onSessionUpdate(callback: (data: { sessionId: string | null }) => void): () => void;
       openImageDialog(): Promise<{ data: string; mimeType: string; filename: string } | null>;
+      playTTS(text: string): Promise<{ success: boolean; error?: string }>;
+      onShowSettings(callback: () => void): () => void;
     };
   }
 }
@@ -17,11 +19,12 @@ declare global {
 export function useHermes() {
   const [sessionId, setSessionId] = useState<string | null>(null);
 
-  const sendMessage = useCallback(async (text: string, media?: MediaAttachment[]) => {
+  const sendMessage = useCallback(async (text: string, media?: MediaAttachment[], history?: any[]) => {
     const request = {
       id: `req-${Date.now()}`,
       message: text,
       media,
+      history,
       sessionId: sessionId || undefined,
     };
 
