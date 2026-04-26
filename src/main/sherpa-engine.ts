@@ -1,8 +1,9 @@
-// Sherpa-ONNX Engine — Wake Word + Streaming ASR (Windows native)
-// Uses sherpa-onnx-node native addon. Model: streaming-paraformer-bilingual-zh-en
+// Sherpa-ONNX Engine — Wake Word + Streaming ASR
+// Audio input comes from external source (renderer process via getUserMedia)
 
 import { EventEmitter } from 'events';
 import * as path from 'path';
+import * as fs from 'fs';
 
 let sherpa: any = null;
 
@@ -16,44 +17,65 @@ export class SherpaEngine extends EventEmitter {
   private config: Required<SherpaEngineConfig>;
   private recognizer: any = null;
   private active: boolean = false;
-  private micStream: any = null;
   private silenceTimer: NodeJS.Timeout | null = null;
   private currentText: string = '';
   private modelReady: boolean = false;
+  private lastWakeTime: number = 0;
+  private recognitionStream: any = null;
 
   constructor(config: SherpaEngineConfig = {}) {
     super();
     this.config = {
       modelDir: config.modelDir || path.join(__dirname, '../../../model'),
       wakeWords: config.wakeWords || ['小赫'],
-      silenceTimeout: config.silenceTimeout ?? 1.2,
+      silenceTimeout: config.silenceTimeout ?? 1.5,
     };
   }
 
-  async start(): Promise<void> {
+  async start(): Promise<boolean> {
+    console.log('[Sherpa] ===== Starting Sherpa Engine =====');
+    console.log('[Sherpa] Model dir:', this.config.modelDir);
+    console.log('[Sherpa] Wake words:', this.config.wakeWords);
+
+    // Step 1: Load sherpa-onnx-node
     try {
       sherpa = require('sherpa-onnx-node');
+      console.log('[Sherpa] ✅ sherpa-onnx-node loaded, version:', sherpa.version);
+    } catch (err: any) {
+      console.error('[Sherpa] ❌ Failed to load sherpa-onnx-node:', err.message);
+      this.emit('warning', {
+        message: 'Sherpa-ONNX 加载失败，语音输入不可用',
+        detail: err.message,
+      });
+      return false;
+    }
 
-      const encoder = path.join(this.config.modelDir, 'encoder.onnx');
-      const decoder = path.join(this.config.modelDir, 'decoder.onnx');
-      const joiner = path.join(this.config.modelDir, 'joiner.onnx');
-      const tokens = path.join(this.config.modelDir, 'tokens.txt');
-      const fs = require('fs');
+    // Step 2: Check model files
+    const encoder = path.join(this.config.modelDir, 'encoder.onnx');
+    const decoder = path.join(this.config.modelDir, 'decoder.onnx');
+    const tokens = path.join(this.config.modelDir, 'tokens.txt');
 
-      if (!fs.existsSync(encoder)) {
-        console.warn('[Sherpa] Model not found. Run: npm run download-model');
-        this.emit('warning', { message: 'ASR model not downloaded. Run "npm run download-model"' });
-        return;
-      }
+    console.log('[Sherpa] Checking model files...');
+    const missing: string[] = [];
+    if (!fs.existsSync(encoder)) missing.push('encoder.onnx');
+    if (!fs.existsSync(decoder)) missing.push('decoder.onnx');
+    if (!fs.existsSync(tokens)) missing.push('tokens.txt');
 
+    if (missing.length > 0) {
+      const msg = `模型文件缺失: ${missing.join(', ')}。请运行: npm run download-model`;
+      console.error('[Sherpa] ❌', msg);
+      this.emit('warning', { message: msg });
+      return false;
+    }
+    console.log('[Sherpa] ✅ All model files present');
+
+    // Step 3: Initialize OnlineRecognizer
+    try {
+      console.log('[Sherpa] Initializing OnlineRecognizer...');
       this.recognizer = new sherpa.OnlineRecognizer({
         modelConfig: {
-          transducer: {
-            encoder: encoder,
-            decoder: decoder,
-            joiner: joiner,
-          },
-          tokens: tokens,
+          paraformer: { encoder, decoder },
+          tokens,
           numThreads: 2,
           provider: 'cpu',
         },
@@ -62,48 +84,32 @@ export class SherpaEngine extends EventEmitter {
         rule2MinTrailingSilence: 2.0,
         rule3MinUtteranceLength: 20.0,
       });
-
-      this.modelReady = true;
-      this.emit('ready');
-      console.log('[Sherpa] Model loaded. Starting mic...');
-
-      await this.startMicrophone();
+      console.log('[Sherpa] ✅ OnlineRecognizer initialized');
     } catch (err: any) {
-      console.warn('[Sherpa] Init failed:', err.message);
+      console.error('[Sherpa] ❌ Failed to init recognizer:', err.message);
       this.emit('warning', {
-        message: 'Sherpa-ONNX unavailable. Voice input disabled.',
+        message: 'ASR 模型初始化失败',
         detail: err.message,
       });
+      return false;
     }
+
+    this.modelReady = true;
+    this.emit('ready');
+    console.log('[Sherpa] ✅ Engine ready, waiting for audio input...');
+    console.log('[Sherpa] ===== Engine start complete =====');
+    return true;
   }
 
-  private async startMicrophone(): Promise<void> {
-    try {
-      let Mic: any;
-      try { Mic = require('node-microphone'); } catch {
-        console.warn('[Sherpa] node-microphone not installed. Run: npm install node-microphone');
-        this.emit('warning', { message: 'Microphone library missing. Voice input disabled.' });
-        return;
-      }
-
-      const mic = new Mic({ rate: 16000, channels: 1 });
-      this.micStream = mic.startRecording();
-      console.log('[Sherpa] Mic active @ 16kHz mono');
-
-      this.micStream.on('data', (data: Buffer) => this.processAudio(data));
-      this.micStream.on('error', (err: Error) => {
-        console.error('[Sherpa] Mic error:', err.message);
-        this.emit('error', err);
-      });
-    } catch (err: any) {
-      console.warn('[Sherpa] Mic setup failed:', err.message);
-    }
-  }
-
-  private processAudio(buffer: Buffer): void {
+  /**
+   * Feed raw Int16 PCM audio buffer (16kHz, mono) to the recognizer.
+   * Called from the main process, audio captured by renderer via getUserMedia.
+   */
+  feedAudio(buffer: Buffer): void {
     if (!this.recognizer || !this.modelReady) return;
 
     try {
+      // Convert Int16 PCM → Float32
       const samples = new Float32Array(buffer.length / 2);
       for (let i = 0; i < samples.length; i++) {
         samples[i] = buffer.readInt16LE(i * 2) / 32768.0;
@@ -117,36 +123,52 @@ export class SherpaEngine extends EventEmitter {
       }
 
       const result = this.recognizer.getResult(stream);
-      const text = result?.text || '';
+      const text = (result?.text || '').trim();
 
-      if (text && text !== this.currentText) {
-        this.currentText = text;
+      if (!text) return;
 
-        if (!this.active) {
-          for (const word of this.config.wakeWords) {
-            if (text.includes(word)) {
-              this.active = true;
-              this.emit('wake', { word, timestamp: Date.now() });
-              break;
-            }
+      // === Wake word detection ===
+      if (!this.active) {
+        for (const word of this.config.wakeWords) {
+          if (text.includes(word)) {
+            const now = Date.now();
+            if (now - this.lastWakeTime < 2000) return; // debounce
+            this.lastWakeTime = now;
+            this.active = true;
+            console.log('[Sherpa] 🔔 WAKE:', word, '| text:', text);
+            this.emit('wake', { word, timestamp: now });
+            return;
           }
         }
-
-        if (this.active) {
-          const isFinal = this.recognizer.isEndpoint(stream);
-          this.emit('asr-result', { text, isFinal, timestamp: Date.now() });
-          if (isFinal) this.emit('asr-final', { text, timestamp: Date.now() });
-          this.resetSilenceTimer();
-        }
       }
-    } catch {}
+
+      // === Active ASR ===
+      if (this.active) {
+        const isFinal = this.recognizer.isEndpoint(stream);
+        if (text !== this.currentText) {
+          this.currentText = text;
+          console.log('[Sherpa] 🎙️  ASR:', text, isFinal ? '(final)' : '');
+        }
+        this.emit('asr-result', { text, isFinal, timestamp: Date.now() });
+        if (isFinal) {
+          this.emit('asr-final', { text, timestamp: Date.now() });
+        }
+        this.resetSilenceTimer();
+      }
+    } catch {
+      // Silently skip bad frames
+    }
   }
 
   private resetSilenceTimer(): void {
     if (this.silenceTimer) clearTimeout(this.silenceTimer);
     this.silenceTimer = setTimeout(() => {
-      if (this.active && this.currentText.trim()) {
-        this.emit('utterance-end', { text: this.currentText.trim(), timestamp: Date.now() });
+      if (this.active) {
+        const finalText = this.currentText.trim();
+        if (finalText) {
+          console.log('[Sherpa] 🏁 Utterance end:', finalText);
+          this.emit('utterance-end', { text: finalText, timestamp: Date.now() });
+        }
       }
       this.active = false;
       this.currentText = '';
@@ -155,7 +177,7 @@ export class SherpaEngine extends EventEmitter {
   }
 
   stop(): void {
-    if (this.micStream) { try { this.micStream.destroy?.(); } catch {} this.micStream = null; }
+    console.log('[Sherpa] Stopping engine...');
     this.active = false;
     if (this.silenceTimer) { clearTimeout(this.silenceTimer); this.silenceTimer = null; }
     this.emit('stopped');

@@ -35,7 +35,8 @@
       height: 128px;
       image-rendering: pixelated;
       transition: transform 0.15s ease-out;
-      pointer-events: none;
+      -webkit-app-region: no-drag;
+      cursor: pointer;
     }
 
     /* Idle breathing animation */
@@ -130,15 +131,15 @@
     const sprite = document.getElementById('pet-sprite');
     const statusText = document.getElementById('status-text');
 
-    // Asset paths (adjust based on build)
+    // Asset paths (relative to pet.html at src/renderer/pet/)
     const ASSETS = {
-      idle1: '../assets/pet-idle-1.png',
-      idle2: '../assets/pet-idle-2.png',
-      wake1: '../assets/pet-wake-1.png',
-      wake2: '../assets/pet-wake-2.png',
-      speak1: '../assets/pet-speak-1.png',
-      speak2: '../assets/pet-speak-2.png',
-      sleep: '../assets/pet-sleep.png',
+      idle1: '../../../assets/pet-idle-1.png',
+      idle2: '../../../assets/pet-idle-2.png',
+      wake1: '../../../assets/pet-wake-1.png',
+      wake2: '../../../assets/pet-wake-2.png',
+      speak1: '../../../assets/pet-speak-1.png',
+      speak2: '../../../assets/pet-speak-2.png',
+      sleep: '../../../assets/pet-sleep.png',
     };
 
     // === Sprite Management ===
@@ -277,7 +278,56 @@
 
     // === Init ===
     startIdleAnimation();
+    startMicCapture();
     console.log('[Pet] 2B chibi ready!');
+
+    // === Microphone Capture (renderer → main process) ===
+    let audioContext = null;
+    let scriptProcessor = null;
+    let micStream = null;
+
+    async function startMicCapture() {
+      try {
+        console.log('[Pet] 🎤 Requesting microphone...');
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            sampleRate: 16000,
+            channelCount: 1,
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+          }
+        });
+        console.log('[Pet] 🎤 Microphone granted, sampleRate:', micStream.getAudioTracks()[0]?.getSettings()?.sampleRate);
+
+        audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+        const source = audioContext.createMediaStreamSource(micStream);
+
+        // ScriptProcessor for PCM conversion
+        // Buffer size 4096 = ~256ms at 16kHz — good balance of latency vs CPU
+        scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+        source.connect(scriptProcessor);
+        scriptProcessor.connect(audioContext.destination);
+
+        scriptProcessor.onaudioprocess = (e) => {
+          const input = e.inputBuffer.getChannelData(0);
+          // Convert Float32 [-1,1] → Int16 PCM
+          const int16 = new Int16Array(input.length);
+          for (let i = 0; i < input.length; i++) {
+            int16[i] = Math.max(-32768, Math.min(32767, Math.round(input[i] * 32767)));
+          }
+          // Send to main process
+          ipcRenderer.send('audio-data', Buffer.from(int16.buffer));
+        };
+
+        ipcRenderer.send('mic-ready');
+        showStatus('🎤 麦克风就绪，说"小赫小赫"唤醒我~', 3000);
+      } catch (err) {
+        console.error('[Pet] 🎤 Mic denied:', err.message || err);
+        ipcRenderer.send('mic-error', err.message || String(err));
+        showStatus('⚠️ 麦克风权限被拒绝，请在系统设置中允许', 5000);
+      }
+    }
   </script>
 </body>
 </html>

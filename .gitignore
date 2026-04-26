@@ -2,6 +2,7 @@ node_modules/
 dist/
 release/
 model/
+model - 副本/
 *.log
 .DS_Store
 skills/

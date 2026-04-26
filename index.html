@@ -3,9 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:; media-src 'self' blob:; img-src 'self' data: blob:;" />
-    <title>Hermes Desktop</title>
-    <script src="/public/mock-api.js"></script>
+    <title>HiHermes</title>
+    <script>
+      // Electron mode: inject hermesAPI directly (contextIsolation: false)
+      if (typeof require !== 'undefined') {
+        try {
+          const { ipcRenderer } = require('electron');
+          window.hermesAPI = {
+            sendMessage: (r) => ipcRenderer.invoke('hermes:send-message', r),
+            getSession: () => ipcRenderer.invoke('hermes:get-sessions'),
+            newSession: () => ipcRenderer.invoke('hermes:new-session'),
+            onSessionUpdate: (cb) => {
+              const h = (_e, d) => cb(d);
+              ipcRenderer.on('hermes:session-update', h);
+              return () => ipcRenderer.removeListener('hermes:session-update', h);
+            },
+            getSettings: () => ipcRenderer.invoke('settings:get'),
+            setSettings: (p) => ipcRenderer.invoke('settings:set', p),
+            onSettingsUpdated: (cb) => {
+              const h = (_e, s) => cb(s);
+              ipcRenderer.on('settings:updated', h);
+              return () => ipcRenderer.removeListener('settings:updated', h);
+            },
+            openImageDialog: () => ipcRenderer.invoke('dialog:open-image'),
+          };
+        } catch(e) { console.warn('Electron API init failed:', e); }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

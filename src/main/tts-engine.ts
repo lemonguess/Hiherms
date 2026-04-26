@@ -1,5 +1,5 @@
-// TTS Streaming Engine — Edge TTS 句子级流式
-// Hermes 回复 → 拆分句子 → 逐句 edge-tts 合成播放
+// TTS Engine — Edge TTS sentence-level streaming
+// Synthesizes via edge-tts CLI, plays via system audio player
 
 import { exec, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
@@ -9,16 +9,17 @@ import * as os from 'os';
 
 export interface TTSOptions {
   voice?: string;       // edge-tts voice name
-  rate?: string;        // speed: "+0%", "-10%", "+20%"
-  pitch?: string;       // pitch: "+0Hz"
-  volume?: string;      // volume: "+0%"
-  tmpDir?: string;      // temp audio file directory
+  rate?: string;        // "+0%", "-10%", "+20%"
+  pitch?: string;       // "+0Hz"
+  volume?: string;      // "+0%"
+  tmpDir?: string;
 }
+
+const isWindows = process.platform === 'win32';
 
 export class TTSEngine extends EventEmitter {
   private options: Required<TTSOptions>;
   private speaking: boolean = false;
-  private queue: string[] = [];
   private currentProcess: ChildProcess | null = null;
 
   constructor(options: TTSOptions = {}) {
@@ -32,26 +33,27 @@ export class TTSEngine extends EventEmitter {
     };
   }
 
-  // Split text into sentences for streaming playback
+  // Apply settings changes
+  reconfigure(opts: Partial<TTSOptions>): void {
+    if (opts.voice !== undefined) this.options.voice = opts.voice;
+    if (opts.rate !== undefined) this.options.rate = opts.rate;
+    if (opts.pitch !== undefined) this.options.pitch = opts.pitch;
+    if (opts.volume !== undefined) this.options.volume = opts.volume;
+  }
+
   private splitSentences(text: string): string[] {
-    // Split on Chinese/English punctuation but keep the punctuation
     const sentences: string[] = [];
-    // Match: any chars followed by sentence-ending punctuation
     const parts = text.split(/(?<=[。！？；\n\.!\?;])/g);
     for (const part of parts) {
       const trimmed = part.trim();
-      if (trimmed.length > 0) {
-        sentences.push(trimmed);
-      }
+      if (trimmed.length > 0) sentences.push(trimmed);
     }
-    // If no split happened (no punctuation), treat whole text as one sentence
     if (sentences.length === 0 && text.trim().length > 0) {
       sentences.push(text.trim());
     }
     return sentences;
   }
 
-  // Speak text with sentence-level streaming
   async speak(text: string): Promise<void> {
     if (!text || text.trim().length === 0) return;
 
@@ -77,13 +79,14 @@ export class TTSEngine extends EventEmitter {
     this.emit('end');
   }
 
-  // Synthesize and play a single sentence
   private speakOne(text: string): Promise<void> {
     return new Promise((resolve, reject) => {
       const tmpFile = path.join(this.options.tmpDir, `tts-${Date.now()}.mp3`);
 
-      // Escape double quotes and backticks for shell
-      const escaped = text.replace(/"/g, '\\"').replace(/`/g, '\\`');
+      const escaped = text
+        .replace(/"/g, '\\"')
+        .replace(/`/g, '\\`')
+        .replace(/[\u0000-\u001f]/g, '');  // strip control chars
 
       const cmd = [
         'edge-tts',
@@ -95,80 +98,53 @@ export class TTSEngine extends EventEmitter {
         `--write-media "${tmpFile}"`,
       ].join(' ');
 
-      const proc = exec(cmd, { timeout: 15000 }, (err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        // Play the audio file
-        try {
-          this.playAudioFile(tmpFile).then(() => {
-            // Clean up temp file
-            fs.unlink(tmpFile, () => {});
-            resolve();
-          }).catch(reject);
-        } catch (playErr) {
-          reject(playErr);
-        }
+      const proc = exec(cmd, { timeout: 15000, windowsHide: true }, (err) => {
+        if (err) { reject(err); return; }
+        this.playFile(tmpFile).then(() => {
+          fs.unlink(tmpFile, () => {});
+          resolve();
+        }).catch(reject);
       });
 
       this.currentProcess = proc;
     });
   }
 
-  // Play audio file using system player
-  private playAudioFile(filepath: string): Promise<void> {
+  // Cross-platform audio playback
+  private playFile(filepath: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      // Try multiple players in order
-      const players = [
-        `ffplay -nodisp -autoexit -loglevel quiet "${filepath}"`,
-        `mpg123 -q "${filepath}"`,
-        `aplay "${filepath}"`,  // Linux
-      ];
+      let cmd: string;
 
-      const tryPlayer = (index: number) => {
-        if (index >= players.length) {
-          reject(new Error('No audio player available'));
-          return;
-        }
+      if (isWindows) {
+        // Windows: PowerShell Media.SoundPlayer (sync, reliable)
+        cmd = `powershell -NoProfile -Command "(New-Object System.Media.SoundPlayer '${filepath.replace(/'/g, "''")}').PlaySync()"`;
+      } else {
+        // Linux/macOS: try ffplay, fallback to mpg123, then aplay
+        cmd = `ffplay -nodisp -autoexit -loglevel quiet "${filepath}" 2>/dev/null || mpg123 -q "${filepath}" 2>/dev/null || aplay "${filepath}" 2>/dev/null`;
+      }
 
-        const proc = exec(players[index], { timeout: 30000 }, (err) => {
-          if (err && index < players.length - 1) {
-            tryPlayer(index + 1);
-          } else if (err) {
-            reject(err);
-          } else {
-            resolve();
-          }
-        });
-      };
+      const proc = exec(cmd, { timeout: 30000, windowsHide: true }, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
 
-      tryPlayer(0);
+      this.currentProcess = proc;
     });
   }
 
-  // Check if currently speaking
-  isSpeaking(): boolean {
-    return this.speaking;
-  }
+  isSpeaking(): boolean { return this.speaking; }
 
-  // Stop current speech
   stop(): void {
     if (this.currentProcess) {
       this.currentProcess.kill();
       this.currentProcess = null;
     }
-    this.queue = [];
     this.speaking = false;
     this.emit('stop');
   }
 
-  // Clean up temp files
   destroy(): void {
     this.stop();
-    try {
-      fs.rmSync(this.options.tmpDir, { recursive: true, force: true });
-    } catch {}
+    try { fs.rmSync(this.options.tmpDir, { recursive: true, force: true }); } catch {}
   }
 }

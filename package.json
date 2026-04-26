@@ -27,9 +27,6 @@
     "sherpa-onnx-node": "^1.12.40",
     "uuid": "^9.0.0"
   },
-  "optionalDependencies": {
-    "node-microphone": "^0.1.5"
-  },
   "devDependencies": {
     "@types/node": "^20.10.0",
     "@types/react": "^18.2.0",

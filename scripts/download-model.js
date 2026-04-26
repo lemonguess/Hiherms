@@ -14,7 +14,6 @@ const TARBALL = path.join(MODEL_DIR, 'model.tar.bz2');
 const EXPECTED_FILES = [
   'encoder.onnx',
   'decoder.onnx',
-  'joiner.onnx',
   'tokens.txt',
 ];
 
