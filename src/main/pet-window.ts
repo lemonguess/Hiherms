@@ -129,7 +129,8 @@ export class PetWindow {
   // === Pet Window ===
   createPetWindow(): void {
     const { width: screenW, height: screenH } = screen.getPrimaryDisplay().workAreaSize;
-    const petW = 160, petH = 180;
+    // 增大 Live2D 桌宠的默认窗口尺寸
+    const petW = 300, petH = 450;
     let x = screenW - petW - 20, y = screenH - petH - 40;
 
     const savedPos = this.settingsStore.get('petPosition');

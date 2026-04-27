@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>HiHermes</title>
+    <!-- Cubism 4 model only: keep Cubism Core, remove legacy Live2D v2 runtime -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
     <script>
       // Electron fallback bridge: only inject when preload did not expose hermesAPI
       if (typeof require !== 'undefined' && !window.hermesAPI) {

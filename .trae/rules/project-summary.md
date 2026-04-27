@@ -1,28 +1,50 @@
-# HiHermes 二次元桌宠 AI 助手 - 项目总结
+# HiHermes 当前项目总结
 
 ## 项目概述
-HiHermes 是一款跨平台（macOS/Windows）的二次元桌宠 AI 助手。项目将 Q 版 Lottie 动画常驻在桌面右下角，用户可通过唤醒词触发交互，并以纯文本或流式语音的形式与后端的 Hermes Agent 进行对话。
+HiHermes 当前正在从旧版 Electron 桌宠方案迁移到 **Tauri + React + PixiJS + Live2D**。现阶段已经完成一个可运行的 Tauri 桌宠原型：主窗口显示 Live2D 桌宠，桌宠固定在桌面右下角，双击可打开独立聊天窗口，聊天消息通过 Tauri 事件流模拟 Hermes Agent 的流式回复。
 
-## 核心架构与技术栈
-- **底层框架**：Electron 33（支持透明窗口、系统托盘等原生特性）
-- **前端栈**：React 18 + TypeScript 5 + Vite 5
-- **语音识别 (ASR)**：使用 `sherpa-onnx-node` 集成 `paraformer-zh-small` 模型，提供极低功耗的离线唤醒词检测和流式语音识别。
-- **语音合成 (TTS)**：调用 `msedge-tts` (Edge TTS) 的 `zh-CN-XiaoyiNeural` 音色，进行句子级流式播报。
-- **大模型后端**：通过本地子进程桥接 `Hermes Agent CLI`，实现持久化记忆、工具调用和会话管理。
-- **动画引擎**：Lottie Web（用于呈现桌宠的待机、唤醒、说话、休眠等状态）。
+## 当前实际技术栈
+- **底层框架**：Tauri 2 + Rust。
+- **前端栈**：React 18 + TypeScript 5 + Vite 5。
+- **渲染引擎**：PixiJS 6 + `pixi-live2d-display@0.4.0`。
+- **模型资源**：当前接入 `public/live2d/kei/kei_basic_free.model3.json`。
+- **后端通信**：Tauri `invoke` + `window.emit`，Rust 端当前为模拟流式输出。
+- **遗留兼容**：仓库内仍保留部分 Electron 代码和 `index.html` 中的 Electron fallback bridge，但当前 Tauri 方案不依赖这些逻辑。
 
-## 交互模式
-1. **语音唤醒模式（桌宠态）**：
-   桌面右下角常驻 → 喊出唤醒词（如"小赫"） → Lottie 触发唤醒动画 → 用户说话进行流式 ASR 识别 → 传给 Hermes Agent → 获取回复并分句进行 Edge TTS 语音播报。
-2. **聊天窗口模式（面板态）**：
-   双击桌宠 → 弹出 React Chat UI 面板 → 支持文字输入与图片上传（不触发语音回复） → 关闭后退回桌宠态。
+## 本轮已经完成的内容
+- 修复 `pixi-live2d-display` 与 PixiJS 版本不兼容导致的模型碎片化显示问题，将 `pixi.js` 固定到 v6。
+- 清理 `PetApp` 中调试残留内容，移除调试方块、纹理预览和日志面板。
+- 暂时关闭点击穿透逻辑，因为原实现会吞掉双击事件，导致桌宠无法打开聊天窗口。
+- 将桌宠主窗口缩小为更贴近角色本体的尺寸：`420 x 560`。
+- 在前端启动时使用 Tauri Window API 将桌宠窗口定位到主显示器工作区右下角。
+- 双击桌宠时不再在原窗口内展开面板，而是新建独立 Tauri 聊天窗口，并保持居中打开。
+- 新增 `src/renderer/chat/TauriChatApp.tsx`，作为当前 Tauri 聊天窗口实现。
+- 修正 `src/renderer/main.tsx` 的入口路由逻辑：`?mode=pet` 进入桌宠页，Tauri 其他窗口进入聊天页，非 Tauri 环境继续走旧版 `App.tsx`。
 
-## 项目结构
-- `src/main/`: Electron 主进程代码，包含窗口管理 (`index.ts`)、托盘 (`tray.ts`)、Hermes 子进程桥接 (`hermes-bridge.ts`)、唤醒与识别引擎 (`sherpa-engine.ts`) 以及 TTS 引擎 (`tts-engine.ts`)。
-- `src/renderer/`: React 渲染进程代码，按功能划分为桌宠页面 (`pet/`) 和聊天窗口页面 (`chat/`)，通过自定义 Hooks (如 `useHermes`, `useVoice`) 管理状态和 IPC 通信。
-- `assets/`: Lottie 动画资源。
-- `model/`: 本地 ONNX 语音模型。
+## 当前窗口与交互状态
+1. **桌宠窗口**
+   启动后为透明无边框窗口，固定右下角，尺寸较小，显示 Live2D 模型和气泡文本。
+2. **聊天窗口**
+   双击桌宠后打开一个独立的居中聊天窗，不再复用桌宠窗口右侧面板。
+3. **流式回复**
+   Rust 端 `connect_agent` 会逐字 `emit("agent-chunk")`，前端聊天页和桌宠气泡都能接收流式文本。
 
-## 现状与待办
-- **已完成**：Electron+React 基础脚手架、Hermes CLI 子进程单次交互桥接、纯文字聊天窗口及图片上传。
-- **规划中/开发中**：Sherpa-ONNX 离线唤醒与流式识别、Edge TTS 语音回复、透明桌宠窗口及 Lottie 动画、双击打开聊天面板等核心功能。
+## 关键文件
+- `src/renderer/pet/PetApp.tsx`：桌宠主界面、Live2D 加载、右下角布局、双击打开聊天窗。
+- `src/renderer/chat/TauriChatApp.tsx`：当前 Tauri 独立聊天窗口。
+- `src/renderer/main.tsx`：按 `mode` 决定渲染桌宠页还是聊天页。
+- `src-tauri/src/lib.rs`：Tauri 命令与事件发送，当前提供 `set_ignore_cursor_events` 和 `connect_agent`。
+- `src-tauri/tauri.conf.json`：主窗口初始配置，已收窄为桌宠尺寸并设为透明、无边框、置顶、跳过任务栏。
+- `index.html`：仍保留 Electron fallback bridge，属于遗留兼容逻辑。
+
+## 当前已知问题
+- **点击穿透未完成**：当前为了保证双击可用，已临时关闭精准点击穿透；透明区域点穿桌面能力还未正确恢复。
+- **聊天链路仍是模拟版**：Rust 端 `connect_agent` 只是模拟 SSE 输出，尚未接真实 Hermes Agent 服务。
+- **旧版 Electron 逻辑仍在仓库中**：包括 `src/main/` 与 `window.hermesAPI` 相关代码，尚未彻底清理。
+- **开发环境磁盘空间不足**：执行 `npm run dev` 时出现 `ENOSPC: no space left on device`，当前会阻塞重新启动 Tauri 开发环境。
+
+## 下一步建议
+- 恢复“精确点击穿透”，但要避免再次吞掉双击事件。
+- 将 `connect_agent` 从模拟输出切换到真实 Hermes Agent SSE 或桥接实现。
+- 为桌宠增加拖拽后记忆位置能力。
+- 评估是否移除 `index.html` 中的 Electron fallback，避免后续混淆。

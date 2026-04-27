@@ -6,10 +6,12 @@
   "scripts": {
     "postinstall": "node scripts/download-model.js",
     "download-model": "node scripts/download-model.js",
-    "dev": "npm run download-model && concurrently -k \"npm run dev:main\" \"npm run dev:renderer\" \"npm run dev:electron\"",
+    "dev": "npm run tauri dev",
+    "dev:electron": "npm run download-model && concurrently -k \"npm run dev:main\" \"npm run dev:renderer:electron\" \"npm run dev:electron:run\"",
     "dev:main": "tsc -p tsconfig.node.json --watch",
+    "dev:renderer:electron": "vite --host 127.0.0.1",
     "dev:renderer": "vite --host 127.0.0.1",
-    "dev:electron": "wait-on tcp:127.0.0.1:5173 && cross-env HIMERS_MODE=pet npx nodemon --watch dist/main --exec \"electron .\"",
+    "dev:electron:run": "wait-on tcp:127.0.0.1:5173 && cross-env HIMERS_MODE=pet npx nodemon --watch dist/main --exec \"electron .\"",
     "dev:chat": "npm run download-model && wait-on tcp:127.0.0.1:5173 && cross-env HIMERS_MODE=chat npx nodemon --watch dist/main --exec \"electron .\"",
     "dev:web": "vite --host 0.0.0.0",
     "build": "npm run build:main && npm run build:renderer",
@@ -20,15 +22,20 @@
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "push": "bash gitpush.sh",
-    "sprites": "python3 scripts/gen_sprites.py"
+    "sprites": "python3 scripts/gen_sprites.py",
+    "tauri": "tauri"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.10.1",
     "msedge-tts": "^2.0.5",
     "node-pty": "^1.0.0",
+    "pixi-live2d-display": "^0.4.0",
+    "pixi.js": "^6.5.10",
     "sherpa-onnx-node": "^1.12.40",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.10.1",
     "@types/node": "^20.10.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
