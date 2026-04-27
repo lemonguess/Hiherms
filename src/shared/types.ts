@@ -32,12 +32,22 @@ export interface HermesResponse {
   error?: string;
 }
 
+export interface SessionSummary {
+  id: string;
+  title: string;
+  time?: string;
+}
+
 // ===== App Settings =====
+
+export type HermesConnectionMode = 'api_server' | 'local';
 
 export interface AppSettings {
   // Hermes connection
+  connectionMode: HermesConnectionMode;
   apiServerUrl: string;        // e.g. http://localhost:8642
   apiServerKey: string;        // API_SERVER_KEY if set
+  localHermesPath: string;     // path to hermes CLI or just "hermes"
 
   // Voice / Wake
   wakeWords: string[];
@@ -56,8 +66,10 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
+  connectionMode: 'api_server',
   apiServerUrl: 'http://localhost:8642',
   apiServerKey: '',
+  localHermesPath: 'hermes',
 
   wakeWords: ['小赫', 'AI助手', '2B'],
   silenceTimeout: 1.5,
@@ -107,7 +119,9 @@ export const IPC_CHANNELS = {
   VOICE_RECORD_STOP: 'hermes:voice-record-stop',
   VOICE_PLAY: 'hermes:voice-play',
   GET_SESSIONS: 'hermes:get-sessions',
+  LIST_SESSIONS: 'hermes:list-sessions',
   LOAD_SESSION: 'hermes:load-session',
+  SELECT_SESSION: 'hermes:select-session',
   NEW_SESSION: 'hermes:new-session',
   // Settings
   GET_SETTINGS: 'settings:get',

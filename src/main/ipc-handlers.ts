@@ -27,6 +27,16 @@ export function registerIpcHandlers(bridge: HermesBridge, ttsEngine: TTSEngine):
     return { sessionId: bridge.getSessionId() };
   });
 
+  ipcMain.handle(IPC_CHANNELS.LIST_SESSIONS, async () => {
+    const sessions = await bridge.listSessions(30);
+    return { sessions };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SELECT_SESSION, async (_event, sessionId: string) => {
+    bridge.setSession(sessionId || null);
+    return { success: true };
+  });
+
   // Start a new session
   ipcMain.handle(IPC_CHANNELS.NEW_SESSION, async () => {
     bridge.newSession();

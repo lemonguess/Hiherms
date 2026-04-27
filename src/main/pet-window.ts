@@ -152,8 +152,12 @@ export class PetWindow {
   private openChatWindow(): void {
     if (this.chatWindow && !this.chatWindow.isDestroyed()) { this.chatWindow.focus(); return; }
 
+    const { width: screenW, height: screenH } = screen.getPrimaryDisplay().workAreaSize;
+
     this.chatWindow = new BrowserWindow({
-      width: 480, height: 700, title: 'HiHermes Chat',
+      width: Math.floor(screenW * 2 / 3),
+      height: screenH,
+      title: 'HiHermes Chat',
       webPreferences: {
         nodeIntegration: true,
         contextIsolation: false,
@@ -252,8 +256,8 @@ export class PetWindow {
       {
         label: '🔗 连接方式',
         submenu: [
-          { label: '🌐 API Server (HTTP)', type: 'radio' as const, checked: s.backend === 'api-server', click: () => this.settingsStore.set({ backend: 'api-server' }) },
-          { label: '🐧 WSL CLI', type: 'radio' as const, checked: s.backend === 'wsl-cli', click: () => this.settingsStore.set({ backend: 'wsl-cli' }) },
+          { label: '🌐 API Server (SSE)', type: 'radio' as const, checked: s.connectionMode === 'api_server', click: () => this.settingsStore.set({ connectionMode: 'api_server' }) },
+          { label: '💻 Local Hermes CLI', type: 'radio' as const, checked: s.connectionMode === 'local', click: () => this.settingsStore.set({ connectionMode: 'local' }) },
           { type: 'separator' as const },
           { label: '⚙️ 服务器地址...', click: () => this.openSettingsWindow() },
         ],
@@ -309,8 +313,23 @@ export class PetWindow {
   async start(): Promise<void> {
     this.createPetWindow();
     setTimeout(async () => {
+      // sherpa-onnx native module may crash on newer macOS builds (SIGTRAP).
+      // Keep pet window usable by degrading voice wake gracefully.
+      const darwinMajor = Number(process.versions?.os?.split('.')[0] || '0');
+      const shouldDisableSherpa = process.platform === 'darwin' && darwinMajor >= 25;
+
+      if (shouldDisableSherpa) {
+        console.warn('[Pet] Sherpa disabled on this macOS build to avoid startup crash');
+        this.sendToPet('pet-status', '语音唤醒暂不可用，可双击打开聊天');
+        return;
+      }
+
       const ok = await this.sherpa.start();
-      if (ok) this.sendToPet('pet-status', '说"小赫小赫"唤醒我~');
+      if (ok) {
+        this.sendToPet('pet-status', '说"小赫小赫"唤醒我~');
+      } else {
+        this.sendToPet('pet-status', '语音唤醒初始化失败，可双击打开聊天');
+      }
     }, 1500);
   }
 

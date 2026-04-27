@@ -32,15 +32,19 @@
 
 | 功能 | 实现 | 状态 |
 |------|------|------|
-| 🎤 语音唤醒 | Sherpa-ONNX 本地唤醒词 | 规划中 |
-| 📝 流式 ASR | Sherpa-ONNX paraformer-zh | 规划中 |
-| 🎨 Q版桌宠 | Electron 透明窗口 + Lottie 动画 | 规划中 |
-| 💬 AI 对话 | Hermes Agent 子进程调用 | ✅ 已对接 |
-| 🔊 语音回复 | Edge TTS (zh-CN-XiaoyiNeural) | 规划中 |
-| 🖱️ 双击打开聊天 | 桌宠 → 聊天窗口切换 | 规划中 |
+| 🎤 语音唤醒 | Sherpa-ONNX 本地唤醒词 | ✅ 已完成 |
+| 📝 流式 ASR | Sherpa-ONNX paraformer-zh | ✅ 已完成 |
+| 🎨 Q版桌宠 | Electron 透明窗口 + Lottie 动画 | ✅ 已完成 |
+| 💬 AI 对话 | Hermes Agent 子进程调用 | ✅ 已完成 |
+| 🔊 语音回复 | Edge TTS (zh-CN-XiaoyiNeural) | ✅ 已完成 |
+| 🖱️ 交互菜单 | 右键菜单 / 快捷键打开聊天 | ✅ 已完成 |
 | 🔤 聊天窗口 | React Chat UI（纯文字） | ✅ 已完成 |
 | 🖼️ 图片输入 | 剪贴板粘贴 / 文件上传 | ✅ 已完成 |
-| ⚙️ 唤醒词自定义 | 配置面板可设 | 规划中 |
+| 🧠 会话续传 | 默认恢复最近会话（本地 Hermes） | ✅ 已完成 |
+| 🗂️ 会话列表 | 顶部按钮展示倒序会话标题并可切换 | ✅ 已完成 |
+| 🧭 顶部按钮提示 | 悬浮显示按钮用途文案 | ✅ 已完成 |
+| 🖼️ 文件输出交互 | 回复中的媒体文件支持预览/定位 | ✅ 已完成 |
+| ⚙️ 唤醒词/语音自定义 | 配置面板可设 | ✅ 已完成 |
 
 ---
 
@@ -107,7 +111,7 @@ AI 后端           Hermes Agent CLI          子进程调用、会话保持
 
 ### 下载安装包（推荐）
 
-从 [GitHub Releases](https://github.com/lemonguess/Hiherms/releases) 下载最新版本：
+从 [GitHub Releases](https://github.com/lemonguess/HiHermes/releases) 下载最新版本：
 
 | 平台 | 安装包 |
 |------|--------|
@@ -134,8 +138,8 @@ AI 后端           Hermes Agent CLI          子进程调用、会话保持
 #### 1. 克隆 & 安装
 
 ```bash
-git clone https://github.com/lemonguess/Hiherms.git
-cd Hiherms
+git clone https://github.com/lemonguess/HiHermes.git
+cd HiHermes
 npm install
 ```
 
@@ -168,7 +172,7 @@ npm run dist     # 生成安装包
 ## 📁 项目结构
 
 ```
-himers/
+HiHermes/
 ├── package.json
 ├── electron-builder.yml      # Electron 打包配置（macOS + Windows）
 ├── vite.config.ts
@@ -203,10 +207,10 @@ himers/
 │   └── shared/
 │       └── types.ts
 ├── assets/
-│   ├── pet-idle.json          # 桌宠待机动画
-│   ├── pet-wake.json          # 桌宠唤醒动画
-│   ├── pet-speak.json         # 桌宠说话动画
-│   └── pet-sleep.json         # 桌宠休眠动画
+│   ├── pet-*.png              # 当前桌宠精灵帧
+│   ├── pet-chibi-shortskirt.svg # 新版短裙长腿桌宠形象
+│   └── screenshots/           # README 使用截图（示例占位）
+│       └── .gitkeep
 └── public/
     └── mock-api.js            # Web 预览 mock
 ```
@@ -355,6 +359,19 @@ const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
 | 拖拽桌宠 | 移动到屏幕任意位置 |
 | 右键桌宠 | 设置菜单（唤醒词/TTS/关于） |
 | 静默 1.2s | 自动休眠回待机 |
+
+---
+
+## 🖼️ 使用
+
+
+![聊天窗口](assets/screenshots/Snipaste_2026-04-27_17-21-03.png)
+
+![会话列表](assets/screenshots/Snipaste_2026-04-27_17-21-39.png)
+
+![桌宠待机](assets/screenshots/Snipaste_2026-04-27_17-21-57.png)
+
+
 
 ---
 

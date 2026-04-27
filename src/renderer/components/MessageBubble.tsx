@@ -59,6 +59,44 @@ export function MessageBubble({ message, onPlayTTS }: MessageBubbleProps) {
                     🎤 语音消息 ({media.filename || 'audio'})
                   </div>
                 )}
+                {media.type === 'file' && (
+                  <div className="media-file" style={{ padding: '8px', background: '#2d333b', borderRadius: '6px', marginTop: '4px', fontSize: '13px' }}>
+                    {media.mimeType?.startsWith('image/') && (
+                      <img
+                        src={`file://${encodeURI(media.data)}`}
+                        alt={media.filename || 'local image'}
+                        className="media-image"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: media.mimeType?.startsWith('image/') ? '6px' : '0' }}>
+                      <span style={{ fontSize: '16px' }}>📄</span>
+                      <span style={{ flex: 1, wordBreak: 'break-all' }}>{media.filename || media.data}</span>
+                    </div>
+                    <div style={{ marginTop: '6px', display: 'flex', gap: '8px' }}>
+                      <button
+                        className="action-btn"
+                        onClick={() => {
+                          const shell = require('electron').shell;
+                          shell.openPath(media.data);
+                        }}
+                        title="预览文件"
+                      >
+                        预览
+                      </button>
+                      <button
+                        className="action-btn"
+                        onClick={() => {
+                          const shell = require('electron').shell;
+                          shell.showItemInFolder(media.data);
+                        }}
+                        title="打开所在目录"
+                      >
+                        定位
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

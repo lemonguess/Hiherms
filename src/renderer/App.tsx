@@ -1,8 +1,8 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { ChatWindow } from './components/ChatWindow';
 import { InputBar } from './components/InputBar';
 import SettingsPanel from './components/SettingsPanel';
-import { ChatMessage, MediaAttachment } from '../shared/types';
+import { ChatMessage, MediaAttachment, SessionSummary } from '../shared/types';
 import { useHermes } from './hooks/useHermes';
 import { useVoice } from './hooks/useVoice';
 
@@ -17,8 +17,12 @@ export default function App() {
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showSessionPicker, setShowSessionPicker] = useState(false);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [sessionError, setSessionError] = useState('');
+  const sessionPanelRef = useRef<HTMLDivElement | null>(null);
 
-  const { sendMessage, newSession, sessionId } = useHermes();
+  const { sendMessage, newSession, sessionId, listSessions, selectSession } = useHermes();
   const { isRecording, startRecording, stopRecording, playAudio } = useVoice();
 
   const handleSend = useCallback(async (text: string, media?: MediaAttachment[]) => {
@@ -48,7 +52,7 @@ export default function App() {
       );
       const response = await sendMessage(text, media, validHistory);
       setMessages(prev => prev.map(msg =>
-        msg.id === placeholderId ? { ...msg, content: response.content, sessionId: response.sessionId } : msg
+        msg.id === placeholderId ? { ...msg, content: response.content, sessionId: response.sessionId, media: response.media } : msg
       ));
     } catch (error: any) {
       setMessages(prev => prev.map(msg =>
@@ -75,6 +79,40 @@ export default function App() {
     setMessages([{ id: 'new-session', role: 'system', content: '🆕 新会话已开始', timestamp: Date.now() }]);
   }, [newSession]);
 
+  const handleToggleSessions = useCallback(async () => {
+    setSessionError('');
+    if (!showSessionPicker) {
+      try {
+        const items = await listSessions();
+        setSessions(items);
+      } catch (err: any) {
+        setSessions([]);
+        setSessionError(err?.message || '会话加载失败');
+      }
+    }
+    setShowSessionPicker(prev => !prev);
+  }, [showSessionPicker, listSessions]);
+
+  const handleSelectSession = useCallback(async (id: string) => {
+    await selectSession(id);
+    setShowSessionPicker(false);
+    setMessages([
+      { id: `switch-${Date.now()}`, role: 'system', content: `🔁 已切换会话 #${id.slice(-8)}`, timestamp: Date.now() },
+    ]);
+  }, [selectSession]);
+
+  useEffect(() => {
+    if (!showSessionPicker) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (!sessionPanelRef.current) return;
+      if (!sessionPanelRef.current.contains(e.target as Node)) {
+        setShowSessionPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [showSessionPicker]);
+
   const handlePlayTTS = useCallback(async (text: string) => {
     try { await playAudio(text); } catch (error) { console.error('TTS failed:', error); }
   }, [playAudio]);
@@ -100,9 +138,28 @@ export default function App() {
           <h1 className="header-title">HiHermes</h1>
           {sessionId && <span style={{ fontSize: 10, color: '#8b949e', marginLeft: 8 }}>#{sessionId.slice(-8)}</span>}
         </div>
-        <div className="header-right">
-          <button className="header-btn" onClick={() => setShowSettings(true)} title="设置">⚙️</button>
-          <button className="header-btn" onClick={handleNewSession} title="新建会话">＋</button>
+        <div className="header-right" ref={sessionPanelRef}>
+          <button className="header-btn has-tooltip" data-tooltip="会话列表" onClick={handleToggleSessions}>🗂️</button>
+          <button className="header-btn has-tooltip" data-tooltip="设置" onClick={() => setShowSettings(true)}>⚙️</button>
+          <button className="header-btn has-tooltip" data-tooltip="新建会话" onClick={handleNewSession}>＋</button>
+
+          {showSessionPicker && (
+            <div className="session-picker">
+              {sessionError && <div className="session-item muted">{sessionError}</div>}
+              {!sessionError && sessions.length === 0 && <div className="session-item muted">暂无会话</div>}
+              {sessions.map((s) => (
+                <button
+                  key={s.id}
+                  className={`session-item ${s.id === sessionId ? 'active' : ''}`}
+                  onClick={() => handleSelectSession(s.id)}
+                  title={s.id}
+                >
+                  <div className="session-title">{s.title}</div>
+                  {s.time && <div className="session-time">{s.time}</div>}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </header>
 

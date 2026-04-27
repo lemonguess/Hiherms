@@ -31,10 +31,28 @@ export default function SettingsPanel({ onClose }: { onClose?: () => void }) {
       </div>
 
       <Section title="🔗 Hermes 连接">
-        <Label>服务器地址</Label>
-        <input value={settings.apiServerUrl} onChange={e => update({ apiServerUrl: e.target.value })} style={inputStyle} placeholder="http://localhost:8642" />
-        <Label>API Key (如果不需要鉴权可以留空)</Label>
-        <input type="password" value={settings.apiServerKey} onChange={e => update({ apiServerKey: e.target.value })} style={inputStyle} placeholder="sk-..." />
+        <Label>连接方式</Label>
+        <select value={settings.connectionMode} onChange={e => update({ connectionMode: e.target.value as 'api_server' | 'local' })} style={inputStyle}>
+          <option value="api_server">API Server (填写 api_server 地址，走 SSE 流式)</option>
+          <option value="local">本地 Hermes (直接调用本地 hermes CLI)</option>
+        </select>
+
+        {settings.connectionMode === 'api_server' && (
+          <>
+            <Label>服务器地址</Label>
+            <input value={settings.apiServerUrl} onChange={e => update({ apiServerUrl: e.target.value })} style={inputStyle} placeholder="http://localhost:8642" />
+            <Label>API Key (如果不需要鉴权可以留空)</Label>
+            <input type="password" value={settings.apiServerKey} onChange={e => update({ apiServerKey: e.target.value })} style={inputStyle} placeholder="sk-..." />
+          </>
+        )}
+
+        {settings.connectionMode === 'local' && (
+          <>
+            <Label>Hermes CLI 路径</Label>
+            <input value={settings.localHermesPath} onChange={e => update({ localHermesPath: e.target.value })} style={inputStyle} placeholder="hermes 或 /usr/local/bin/hermes" />
+            <div style={{ fontSize: 11, color: '#6e7681', marginTop: 6 }}>本地模式直接调用 hermes CLI，支持会话记忆和 MEDIA: 文件处理</div>
+          </>
+        )}
       </Section>
 
       <Section title="🎤 语音唤醒">

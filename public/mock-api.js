@@ -47,6 +47,19 @@
       return { success: true };
     },
 
+    async listSessions() {
+      return {
+        sessions: [
+          { id: mockSessionId, title: 'Web 预览会话', time: '2024-05-01 12:30:45' },
+        ],
+      };
+    },
+
+    async selectSession(sessionId) {
+      mockSessionId = sessionId || mockSessionId;
+      return { success: true };
+    },
+
     onSessionUpdate(callback) {
       const id = 'session-' + Math.random().toString(36).slice(2, 8);
       listeners[id] = callback;

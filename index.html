@@ -5,13 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>HiHermes</title>
     <script>
-      // Electron mode: inject hermesAPI directly (contextIsolation: false)
-      if (typeof require !== 'undefined') {
+      // Electron fallback bridge: only inject when preload did not expose hermesAPI
+      if (typeof require !== 'undefined' && !window.hermesAPI) {
         try {
           const { ipcRenderer } = require('electron');
           window.hermesAPI = {
             sendMessage: (r) => ipcRenderer.invoke('hermes:send-message', r),
             getSession: () => ipcRenderer.invoke('hermes:get-sessions'),
+            listSessions: () => ipcRenderer.invoke('hermes:list-sessions'),
+            selectSession: (id) => ipcRenderer.invoke('hermes:select-session', id),
             newSession: () => ipcRenderer.invoke('hermes:new-session'),
             onSessionUpdate: (cb) => {
               const h = (_e, d) => cb(d);

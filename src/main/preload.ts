@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { HermesRequest, HermesResponse, AppSettings, IPC_CHANNELS } from '../shared/types';
+import { HermesRequest, HermesResponse, AppSettings, IPC_CHANNELS, SessionSummary } from '../shared/types';
 
 contextBridge.exposeInMainWorld('hermesAPI', {
   // Chat
@@ -9,6 +9,14 @@ contextBridge.exposeInMainWorld('hermesAPI', {
 
   getSession: (): Promise<{ sessionId: string | null }> => {
     return ipcRenderer.invoke(IPC_CHANNELS.GET_SESSIONS);
+  },
+
+  listSessions: (): Promise<{ sessions: SessionSummary[] }> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.LIST_SESSIONS);
+  },
+
+  selectSession: (sessionId: string): Promise<{ success: boolean }> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SELECT_SESSION, sessionId);
   },
 
   newSession: (): Promise<{ success: boolean }> => {

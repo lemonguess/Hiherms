@@ -26,9 +26,8 @@ function createChatWindow(): void {
   const { width: screenW, height: screenH } = screen.getPrimaryDisplay().workAreaSize;
 
   chatWindow = new BrowserWindow({
-    width: Math.min(1200, Math.floor(screenW * 0.75)),
-    height: Math.min(850, Math.floor(screenH * 0.85)),
-    minWidth: 680, minHeight: 500,
+    width: Math.floor(screenW * 2 / 3),
+    height: screenH,
     title: 'HiHermes Chat',
     backgroundColor: '#0d1117',
     webPreferences: {

@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="hairGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="40%" stop-color="#e8ecf1"/>
+      <stop offset="100%" stop-color="#b6c0d4"/>
+    </linearGradient>
+    <linearGradient id="dressGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2a2e33"/>
+      <stop offset="100%" stop-color="#121418"/>
+    </linearGradient>
+    <linearGradient id="skinGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff0e6"/>
+      <stop offset="100%" stop-color="#fbd9cb"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Shadow -->
+  <ellipse cx="64" cy="120" rx="28" ry="6" fill="#000" opacity="0.15"/>
+
+  <!-- Back Hair (Base) -->
+  <path d="M42 36 C42 10, 86 10, 86 36 L88 64 C88 64, 76 60, 64 64 C52 60, 40 64, 40 64 Z" fill="url(#hairGrad)"/>
+
+  <!-- Legs & Boots -->
+  <!-- Left Leg -->
+  <path d="M52 70 L50 100 L46 112 L56 112 L56 100 L58 70 Z" fill="#181a1f"/>
+  <!-- Right Leg -->
+  <path d="M76 70 L78 100 L82 112 L72 112 L72 100 L70 70 Z" fill="#181a1f"/>
+  <!-- Boot Tops (White trim) -->
+  <rect x="49" y="86" width="9" height="3" rx="1" fill="#e8ecf1"/>
+  <rect x="70" y="86" width="9" height="3" rx="1" fill="#e8ecf1"/>
+  <!-- Boot Heels -->
+  <path d="M46 112 L56 112 L56 116 L53 116 L52 112" fill="#000"/>
+  <path d="M72 112 L82 112 L82 116 L79 116 L78 112" fill="#000"/>
+
+  <!-- Skirt / Dress Lower -->
+  <path d="M40 64 C40 85, 48 88, 64 88 C80 88, 88 85, 88 64 Z" fill="url(#dressGrad)"/>
+  <!-- Skirt slit -->
+  <path d="M64 70 L58 87 L70 87 Z" fill="#121418" opacity="0.8"/>
+  <!-- Skirt pattern / trim -->
+  <path d="M42 82 C52 87, 76 87, 86 82" fill="none" stroke="#e8ecf1" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M45 85 C55 89, 73 89, 83 85" fill="none" stroke="#e8ecf1" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Torso / Dress Upper -->
+  <path d="M50 48 L78 48 L80 66 L48 66 Z" fill="url(#dressGrad)"/>
+  <path d="M64 48 L56 66 L72 66 Z" fill="#1a1d24"/>
+  
+  <!-- Chest detail (Boob window / lace) -->
+  <path d="M60 48 C60 54, 68 54, 68 48" fill="#fff0e6"/>
+  <path d="M60 48 C60 54, 68 54, 68 48" fill="none" stroke="#121418" stroke-width="1"/>
+
+  <!-- Arms -->
+  <!-- Left Arm -->
+  <path d="M52 50 C44 56, 40 64, 40 74" fill="none" stroke="url(#skinGrad)" stroke-width="6" stroke-linecap="round"/>
+  <!-- Left Puff Sleeve -->
+  <circle cx="48" cy="54" r="7" fill="#ffffff"/>
+  <!-- Left Glove -->
+  <path d="M43 64 L37 74 L43 74 Z" fill="#181a1f"/>
+
+  <!-- Right Arm -->
+  <path d="M76 50 C84 56, 88 64, 88 74" fill="none" stroke="url(#skinGrad)" stroke-width="6" stroke-linecap="round"/>
+  <!-- Right Puff Sleeve -->
+  <circle cx="80" cy="54" r="7" fill="#ffffff"/>
+  <!-- Right Glove -->
+  <path d="M85 64 L91 74 L85 74 Z" fill="#181a1f"/>
+
+  <!-- Neck -->
+  <rect x="60" y="44" width="8" height="6" fill="url(#skinGrad)"/>
+  <!-- Choker -->
+  <rect x="60" y="46" width="8" height="2" fill="#121418"/>
+
+  <!-- Head (Face) -->
+  <circle cx="64" cy="34" r="22" fill="url(#skinGrad)"/>
+
+  <!-- Mole -->
+  <circle cx="56" cy="46" r="0.8" fill="#333"/>
+
+  <!-- Mouth -->
+  <path d="M61 48 C63 49.5, 65 49.5, 67 48" fill="none" stroke="#e08e98" stroke-width="1.5" stroke-linecap="round"/>
+  
+  <!-- Blush -->
+  <ellipse cx="50" cy="44" rx="3.5" ry="2" fill="#ffb3c1" opacity="0.6" filter="url(#glow)"/>
+  <ellipse cx="78" cy="44" rx="3.5" ry="2" fill="#ffb3c1" opacity="0.6" filter="url(#glow)"/>
+
+  <!-- Visor (Blindfold) -->
+  <path d="M42 28 C56 32, 72 32, 86 28 L88 38 C74 42, 54 42, 40 38 Z" fill="#121418"/>
+  <!-- Visor detail -->
+  <path d="M42 33 C56 37, 72 37, 86 33" fill="none" stroke="#2a2e33" stroke-width="1"/>
+
+  <!-- Front Hair Bangs -->
+  <path d="M64 12 C48 12, 38 24, 38 40 C44 32, 54 28, 64 28 C74 28, 84 32, 90 40 C90 24, 80 12, 64 12 Z" fill="url(#hairGrad)"/>
+  <path d="M64 12 C50 16, 44 26, 42 42 C48 30, 56 22, 64 22 C72 22, 80 30, 86 42 C84 26, 78 16, 64 12 Z" fill="#ffffff" opacity="0.6"/>
+
+  <!-- Hair Strands -->
+  <path d="M40 30 C36 44, 38 58, 46 64 C42 54, 44 44, 48 38 Z" fill="url(#hairGrad)"/>
+  <path d="M88 30 C92 44, 90 58, 82 64 C86 54, 84 44, 80 38 Z" fill="url(#hairGrad)"/>
+  
+  <!-- Hairband / Feather ornament -->
+  <path d="M84 18 L96 10 L94 24 Z" fill="#121418"/>
+  <path d="M86 18 L92 14 L90 22 Z" fill="#e8ecf1"/>
+</svg>

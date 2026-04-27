@@ -6,3 +6,7 @@ model - 副本/
 *.log
 .DS_Store
 skills/
+gitpush.sh
+.trae/
+hiherms-chat-ui.html
+figure/
