@@ -7,6 +7,6 @@ model - 副本/
 .DS_Store
 skills/
 gitpush.sh
-.trae/
+# .trae/
 hiherms-chat-ui.html
 figure/
