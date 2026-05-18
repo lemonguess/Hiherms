@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HermesPet Context Menu</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Geist:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-surface": "#e4e2e4",
+                    "on-tertiary-container": "#575959",
+                    "on-primary-container": "#00626e",
+                    "surface-container-high": "#2a2a2c",
+                    "primary-fixed": "#9cf0ff",
+                    "outline-variant": "#3b494c",
+                    "secondary-fixed-dim": "#c8c6c8",
+                    "outline": "#849396",
+                    "error-container": "#93000a",
+                    "surface-variant": "#353437",
+                    "on-error-container": "#ffdad6",
+                    "inverse-on-surface": "#303032",
+                    "surface-container": "#1f1f21",
+                    "on-tertiary-fixed": "#1a1c1c",
+                    "inverse-primary": "#006875",
+                    "surface-tint": "#00daf3",
+                    "on-secondary": "#303032",
+                    "on-primary-fixed": "#001f24",
+                    "background": "#131315",
+                    "inverse-surface": "#e4e2e4",
+                    "tertiary-container": "#d0d0d0",
+                    "surface-container-low": "#1b1b1d",
+                    "surface-bright": "#39393b",
+                    "on-tertiary-fixed-variant": "#454747",
+                    "on-background": "#e4e2e4",
+                    "tertiary-fixed": "#e2e2e2",
+                    "secondary-container": "#474649",
+                    "on-primary-fixed-variant": "#004f58",
+                    "on-tertiary": "#2f3131",
+                    "on-primary": "#00363d",
+                    "surface-container-lowest": "#0e0e10",
+                    "on-secondary-container": "#b7b4b7",
+                    "on-secondary-fixed-variant": "#474649",
+                    "surface-dim": "#131315",
+                    "secondary-fixed": "#e5e1e4",
+                    "tertiary-fixed-dim": "#c6c6c7",
+                    "tertiary": "#ececec",
+                    "on-secondary-fixed": "#1b1b1d",
+                    "error": "#ffb4ab",
+                    "surface": "#131315",
+                    "primary-fixed-dim": "#00daf3",
+                    "on-error": "#690005",
+                    "surface-container-highest": "#353437",
+                    "primary": "#c3f5ff",
+                    "secondary": "#c8c6c8",
+                    "primary-container": "#00e5ff",
+                    "on-surface-variant": "#bac9cc"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "element-gap": "0.75rem",
+                    "max-width-chat": "320px",
+                    "unit": "4px",
+                    "panel-margin": "1rem",
+                    "container-padding": "1.5rem"
+            },
+            "fontFamily": {
+                    "headline-md": ["Inter"],
+                    "mono-status": ["Geist"],
+                    "headline-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "label-caps": ["Geist"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-md": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "500"}],
+                    "mono-status": ["12px", {"lineHeight": "16px", "letterSpacing": "0", "fontWeight": "500"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "letterSpacing": "0", "fontWeight": "400"}],
+                    "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "letterSpacing": "0", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #0e0e10;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+        .glass-panel {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glow-cyan {
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.15);
+        }
+    </style>
+</head>
+<body class="text-on-surface">
+<!-- Desktop Background Simulation -->
+<div class="fixed inset-0 z-0 bg-[url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?ixlib=rb-4.0.3&amp;auto=format&amp;fit=crop&amp;w=1920&amp;q=80')] bg-cover bg-center opacity-30" data-alt="A cinematic, ultra-high-definition desktop wallpaper featuring abstract flowing silk-like waves in dark obsidian and deep charcoal. Subtle glints of electric cyan light catch the edges of the digital fabric. The overall mood is futuristic, serene, and professional, perfectly suited for a dark-mode tech environment with minimalist atmospheric depth and soft lighting.">
+</div>
+<!-- Main Live2D Character Container -->
+<main class="relative z-10 w-full h-full flex items-center justify-center">
+<div class="relative group">
+<!-- Voice Activity Pulse Ring -->
+<div class="absolute -inset-8 rounded-full border border-primary-container/20 animate-pulse bg-primary-container/5 blur-xl"></div>
+<!-- The Character (Placeholder for Live2D) -->
+<div class="relative w-80 h-80 md:w-96 md:h-96 flex items-center justify-center">
+<img alt="Hermes Live2D Avatar" class="w-full h-full object-contain drop-shadow-[0_0_30px_rgba(0,218,243,0.3)]" data-alt="A highly detailed and stylized 2D anime-style mascot character with white hair and electric cyan accents. The character has a friendly and intelligent expression, wearing a sleek, futuristic high-tech vest. The lighting is soft and ethereal, emphasizing a glassmorphism aesthetic. The character is centered against a dark, minimalist background, appearing as a professional AI companion for a desktop interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBx8UvDnrVoVSEcLt-PbwSDNj3ccwOq6Kc9M22MsWFvbo_5BvyZvwWDA1sdQTNeRTmTii6D4xJi-_0u2Q5tgKmSP7-eL_iGmcH8FN6RDnMpOZKW6oz8r8tvUHFz7cn1fUIbR93t4bON5L5rqNuHTl-y9RdOzHABn1scfobepfoLLTlSMNH5ufzRTF3jJ83vOkf1Zd7-mWdX-kohGF15HqNF3wc4JATSxZ3r-XEEhRAiEjQPBIVhhhgjn4ttlfEAC32_02eBT-yKIYI"/>
+</div>
+<!-- Status Indicator -->
+<div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1 bg-surface-container-high/60 backdrop-blur-md rounded-full border border-white/10">
+<span class="w-2 h-2 rounded-full bg-primary-container glow-cyan"></span>
+<span class="font-mono-status text-mono-status uppercase tracking-widest text-primary-fixed-dim">Listening</span>
+</div>
+<!-- The Context Menu (Simulated Right-Click Appearance) -->
+<div class="absolute top-1/4 -right-12 md:-right-24 z-50">
+<nav class="w-64 bg-surface-container-high/70 backdrop-blur-3xl rounded-xl shadow-xl border border-outline-variant/10 overflow-hidden flex flex-col py-2" style="box-shadow: 0 20px 40px rgba(0,0,0,0.4);">
+<!-- Header -->
+<div class="px-4 py-3 mb-1">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-primary-container/10 flex items-center justify-center border border-primary-container/20">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-primary">HermesPet</h2>
+<p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant font-bold">AI Companion</p>
+</div>
+</div>
+</div>
+<div class="h-px bg-outline-variant/20 mx-4 mb-2"></div>
+<!-- Menu Items from JSON logic (Translated to Chinese as requested) -->
+<ul class="space-y-0.5 px-2">
+<!-- Chat -->
+<li>
+<button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-white/5 hover:text-primary transition-all active:translate-x-1">
+<span class="material-symbols-outlined text-[20px]" data-icon="chat">chat</span>
+<span class="font-body-md text-body-md">开启对话</span>
+<span class="ml-auto text-[10px] text-on-surface-variant/40 font-mono-status">⌘K</span>
+</button>
+</li>
+<!-- History -->
+<li>
+<button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-white/5 hover:text-primary transition-all active:translate-x-1">
+<span class="material-symbols-outlined text-[20px]" data-icon="history">history</span>
+<span class="font-body-md text-body-md">历史会话</span>
+</button>
+</li>
+<!-- Settings -->
+<li>
+<button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-white/5 hover:text-primary transition-all active:translate-x-1">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
+<span class="font-body-md text-body-md">系统设置</span>
+</button>
+</li>
+<!-- Interaction Mode (Active State Example) -->
+<li>
+<button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary-container/10 text-primary-fixed-dim border-l-4 border-primary-fixed-dim transition-all active:translate-x-1">
+<span class="material-symbols-outlined text-[20px]" data-icon="touch_app" style="font-variation-settings: 'FILL' 1;">touch_app</span>
+<span class="font-body-md text-body-md font-bold">交互模式</span>
+<span class="ml-auto w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+</button>
+</li>
+<div class="h-px bg-outline-variant/10 mx-2 my-2"></div>
+<!-- Visibility -->
+<li>
+<button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-white/5 hover:text-primary transition-all active:translate-x-1">
+<span class="material-symbols-outlined text-[20px]" data-icon="visibility_off">visibility_off</span>
+<span class="font-body-md text-body-md">隐藏宠物</span>
+</button>
+</li>
+<!-- Quit -->
+<li>
+<button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-error/80 hover:bg-error/10 hover:text-error transition-all active:translate-x-1">
+<span class="material-symbols-outlined text-[20px]" data-icon="power_settings_new">power_settings_new</span>
+<span class="font-body-md text-body-md">退出程序</span>
+</button>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</main>
+<!-- Side Decoration: Performance Stats -->
+<aside class="fixed bottom-panel-margin left-panel-margin z-20 flex flex-col gap-2">
+<div class="bg-surface-container/40 backdrop-blur-xl px-4 py-3 rounded-xl border border-white/5 flex flex-col gap-1">
+<div class="flex items-center justify-between gap-8">
+<span class="font-label-caps text-label-caps text-on-surface-variant/60">NEURAL LOAD</span>
+<span class="font-mono-status text-mono-status text-primary-fixed-dim">12.4%</span>
+</div>
+<div class="w-32 h-1 bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-primary-container/60 w-1/4"></div>
+</div>
+</div>
+</aside>
+<!-- Side Decoration: Quick Access Bar -->
+<aside class="fixed right-panel-margin top-1/2 -translate-y-1/2 z-20 flex flex-col gap-4">
+<div class="flex flex-col gap-2 p-1.5 bg-surface-container-high/40 backdrop-blur-2xl rounded-full border border-white/5">
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-primary-container/20 hover:text-primary-container transition-colors">
+<span class="material-symbols-outlined">mic</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-primary-container/20 hover:text-primary-container transition-colors">
+<span class="material-symbols-outlined">palette</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-primary-container/20 hover:text-primary-container transition-colors">
+<span class="material-symbols-outlined">auto_fix_high</span>
+</button>
+</div>
+</aside>
+</body></html>

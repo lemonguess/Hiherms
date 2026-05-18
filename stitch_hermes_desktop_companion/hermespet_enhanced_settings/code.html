@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Geist:wght@500;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .glass-panel {
+            backdrop-filter: blur(32px);
+            background-color: rgba(31, 31, 33, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-border {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-tab-glow {
+            box-shadow: inset 0 0 12px rgba(0, 218, 243, 0.1);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-on-surface": "#303032",
+                        "on-primary-container": "#00626e",
+                        "inverse-surface": "#e4e2e4",
+                        "surface-container-lowest": "#0e0e10",
+                        "surface-container-high": "#2a2a2c",
+                        "primary-container": "#00e5ff",
+                        "on-secondary-fixed-variant": "#474649",
+                        "on-error-container": "#ffdad6",
+                        "on-error": "#690005",
+                        "secondary-fixed": "#e5e1e4",
+                        "on-secondary-fixed": "#1b1b1d",
+                        "secondary": "#c8c6c8",
+                        "surface-container": "#1f1f21",
+                        "surface": "#131315",
+                        "primary-fixed": "#9cf0ff",
+                        "inverse-primary": "#006875",
+                        "on-primary-fixed-variant": "#004f58",
+                        "background": "#131315",
+                        "tertiary-fixed-dim": "#c6c6c7",
+                        "outline-variant": "#3b494c",
+                        "outline": "#849396",
+                        "surface-variant": "#353437",
+                        "on-secondary-container": "#b7b4b7",
+                        "on-primary": "#00363d",
+                        "secondary-container": "#474649",
+                        "on-surface-variant": "#bac9cc",
+                        "tertiary-container": "#d0d0d0",
+                        "on-tertiary-fixed": "#1a1c1c",
+                        "error-container": "#93000a",
+                        "surface-tint": "#00daf3",
+                        "tertiary": "#ececec",
+                        "surface-bright": "#39393b",
+                        "primary": "#c3f5ff",
+                        "on-tertiary": "#2f3131",
+                        "tertiary-fixed": "#e2e2e2",
+                        "on-tertiary-container": "#575959",
+                        "on-secondary": "#303032",
+                        "surface-dim": "#131315",
+                        "primary-fixed-dim": "#00daf3",
+                        "on-tertiary-fixed-variant": "#454747",
+                        "on-primary-fixed": "#001f24",
+                        "secondary-fixed-dim": "#c8c6c8",
+                        "on-background": "#e4e2e4",
+                        "error": "#ffb4ab",
+                        "on-surface": "#e4e2e4",
+                        "surface-container-low": "#1b1b1d",
+                        "surface-container-highest": "#353437"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "panel-margin": "1rem",
+                        "element-gap": "0.75rem",
+                        "unit": "4px",
+                        "max-width-chat": "320px",
+                        "container-padding": "1.5rem"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "mono-status": ["Geist"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Geist"],
+                        "headline-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", {"lineHeight": "24px", "letterSpacing": "0", "fontWeight": "400"}],
+                        "mono-status": ["12px", {"lineHeight": "16px", "letterSpacing": "0", "fontWeight": "500"}],
+                        "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "letterSpacing": "0", "fontWeight": "400"}],
+                        "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "700"}],
+                        "headline-md": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface font-body-lg min-h-screen selection:bg-primary/30">
+<!-- Top AppBar -->
+<header class="fixed top-0 w-full backdrop-blur-xl bg-surface/70 flex justify-between items-center px-container-padding h-16 z-50 border-b border-outline-variant/10">
+<div class="flex items-center gap-element-gap">
+<span class="font-headline-lg text-headline-lg font-bold text-primary tracking-tighter">HermesPet</span>
+<span class="bg-primary/10 text-primary px-2 py-0.5 rounded-full text-label-caps font-label-caps">PRO</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer active:scale-95 transition-colors hover:text-primary-fixed-dim" data-icon="graphic_eq">graphic_eq</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer active:scale-95 transition-colors hover:text-primary-fixed-dim" data-icon="battery_charging_full">battery_charging_full</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer active:scale-95 transition-colors hover:text-primary-fixed-dim" data-icon="wifi">wifi</span>
+</div>
+</header>
+<div class="flex min-h-screen pt-16">
+<!-- SideNavBar -->
+<aside class="flex flex-col h-[calc(100vh-64px)] py-panel-margin bg-surface-container/70 fixed left-0 w-64 rounded-r-xl backdrop-blur-2xl border-r border-outline-variant/20 shadow-xl z-40">
+<div class="px-6 mb-8 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary-fixed to-inverse-primary flex items-center justify-center overflow-hidden">
+<img alt="Hermes AI Avatar" class="w-8 h-8" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhEFuanQd8gFA1qf3uP93AF4A-RmfddnPio5InBb744gGPYe52QZvHZdJ3hUM15n9iWgBw2YTMaYbv7IvIuHlQp6DoZ7j6RlnZpyYduMMHfP5j8sutUTNUQAmRdSdvjUua1O2iSueTGS_9dyK9KA92U3Yb7-_IjknG-cCb5NUU8MADx5MaPUMQRf9oVW7Wj228-ktw9KlDvniKYkOsSfDPNYawit3D7G_mhcvtNtuFC81aSoC-gUXSuPUpyvGJ8UVgHghYCA-GVac"/>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md text-primary">HermesPet</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant opacity-70">V1.0.4 Online</span>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="text-on-surface-variant px-4 py-3 flex items-center gap-element-gap hover:bg-surface-variant/40 hover:text-on-surface transition-all active:scale-[0.98] duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-body-sm text-body-sm">当前会话</span>
+</a>
+<a class="text-on-surface-variant px-4 py-3 flex items-center gap-element-gap hover:bg-surface-variant/40 hover:text-on-surface transition-all active:scale-[0.98] duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-body-sm text-body-sm">历史记录</span>
+</a>
+<a class="bg-secondary-container/50 text-primary border-l-4 border-primary px-4 py-3 flex items-center gap-element-gap active:scale-[0.98] duration-200 active-tab-glow" href="#">
+<span class="material-symbols-outlined" data-icon="settings" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="font-body-sm text-body-sm">系统设置</span>
+</a>
+</nav>
+<div class="mt-auto px-4 border-t border-outline-variant/10 pt-4">
+<a class="text-on-surface-variant px-4 py-3 flex items-center gap-element-gap hover:bg-surface-variant/40 hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="info">info</span>
+<span class="font-body-sm text-body-sm">关于</span>
+</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 ml-64 p-8 max-w-4xl mx-auto">
+<header class="mb-10 text-center md:text-left">
+<h1 class="font-headline-lg text-headline-lg text-primary mb-2">Hermes 配置</h1>
+<p class="text-on-surface-variant font-body-sm opacity-80">自定义您的 AI 伴侣性能参数与交互行为</p>
+</header>
+<div class="flex flex-col gap-8 pb-32">
+<!-- LLM Config Section -->
+<section class="glass-panel rounded-xl p-8 flex flex-col gap-8 shadow-2xl">
+<div class="flex items-center justify-between border-b border-outline-variant/20 pb-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="hub">hub</span>
+<h2 class="font-headline-md text-headline-md">模型与核心</h2>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-low p-1 rounded-lg glass-border">
+<button class="px-5 py-2 rounded-md text-body-sm transition-all bg-secondary-container text-primary shadow-sm">本地部署</button>
+<button class="px-5 py-2 rounded-md text-body-sm text-on-surface-variant hover:text-on-surface transition-all">远程 API</button>
+</div>
+</div>
+<div class="space-y-6">
+<div class="flex flex-col gap-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest px-1">Base URL</label>
+<input class="bg-surface-container-highest border-none focus:ring-1 focus:ring-primary/50 rounded-lg py-3 px-4 text-on-surface font-body-lg glass-border transition-all w-full" placeholder="请输入接口地址" type="text" value="http://localhost:11434/v1"/>
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest px-1">API Key</label>
+<div class="relative">
+<input class="w-full bg-surface-container-highest border-none focus:ring-1 focus:ring-primary/50 rounded-lg py-3 px-4 text-on-surface font-body-lg glass-border transition-all" placeholder="请输入授权密钥" type="password" value="sk-••••••••••••••••••••••••"/>
+<span class="material-symbols-outlined absolute right-3 top-3 text-on-surface-variant cursor-pointer hover:text-primary" data-icon="visibility">visibility</span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="flex flex-col gap-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest px-1">语言选择</label>
+<select class="bg-surface-container-highest border-none focus:ring-1 focus:ring-primary/50 rounded-lg py-3 px-4 text-on-surface font-body-sm glass-border appearance-none">
+<option selected="">简体中文 (Simplified Chinese)</option>
+<option>English (US)</option>
+<option>日本語 (Japanese)</option>
+</select>
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest px-1">响应超时 (s)</label>
+<input class="bg-surface-container-highest border-none focus:ring-1 focus:ring-primary/50 rounded-lg py-3 px-4 text-on-surface font-body-sm glass-border" type="number" value="30"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Voice Config Section -->
+<section class="glass-panel rounded-xl p-8 flex flex-col gap-8 shadow-2xl">
+<div class="flex items-center gap-3 border-b border-outline-variant/20 pb-4">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="settings_voice">settings_voice</span>
+<h2 class="font-headline-md text-headline-md">语音设置</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+<div class="space-y-6">
+<div class="flex flex-col gap-3">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">TTS 引擎</label>
+<div class="flex flex-col gap-3">
+<label class="flex items-center gap-3 p-4 bg-surface-container-low rounded-lg glass-border cursor-pointer hover:bg-surface-variant/40 transition-all border-l-4 border-primary">
+<input checked="" class="text-primary focus:ring-primary bg-transparent border-outline w-5 h-5" name="tts" type="radio"/>
+<span class="font-body-sm font-medium">Microsoft Azure (推荐)</span>
+</label>
+<label class="flex items-center gap-3 p-4 bg-surface-container-low rounded-lg glass-border cursor-pointer hover:bg-surface-variant/40 transition-all border-l-4 border-transparent">
+<input class="text-primary focus:ring-primary bg-transparent border-outline w-5 h-5" name="tts" type="radio"/>
+<span class="font-body-sm font-medium">OpenAI TTS</span>
+</label>
+<label class="flex items-center gap-3 p-4 bg-surface-container-low rounded-lg glass-border cursor-pointer hover:bg-surface-variant/40 transition-all border-l-4 border-transparent">
+<input class="text-primary focus:ring-primary bg-transparent border-outline w-5 h-5" name="tts" type="radio"/>
+<span class="font-body-sm font-medium">自定义 (Custom)</span>
+</label>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest px-1">TTS Base URL</label>
+<input class="bg-surface-container-highest border-none focus:ring-1 focus:ring-primary/50 rounded-lg py-3 px-4 text-on-surface font-body-sm glass-border transition-all" placeholder="请输入语音服务接口地址" type="text" value="https://eastasia.tts.speech.microsoft.com/"/>
+</div>
+</div>
+<div class="flex flex-col justify-between space-y-8">
+<div class="space-y-8">
+<div class="flex flex-col gap-3">
+<div class="flex justify-between items-center">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">音调 (Pitch)</label>
+<span class="text-mono-status font-mono-status text-primary bg-primary/10 px-2 py-0.5 rounded">1.2x</span>
+</div>
+<input class="w-full accent-primary h-2 bg-surface-container-highest rounded-lg appearance-none cursor-pointer" max="2.0" min="0.5" step="0.1" type="range" value="1.2"/>
+</div>
+<div class="flex flex-col gap-3">
+<div class="flex justify-between items-center">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">语速 (Speed)</label>
+<span class="text-mono-status font-mono-status text-primary bg-primary/10 px-2 py-0.5 rounded">1.0x</span>
+</div>
+<input class="w-full accent-primary h-2 bg-surface-container-highest rounded-lg appearance-none cursor-pointer" max="2.0" min="0.5" step="0.1" type="range" value="1.0"/>
+</div>
+</div>
+<button class="flex items-center justify-center gap-3 py-4 px-6 glass-border rounded-xl text-primary hover:bg-primary/10 transition-all active:scale-95 group font-medium border-2 border-primary/20">
+<span class="material-symbols-outlined group-hover:animate-pulse text-2xl" data-icon="play_circle">play_circle</span>
+<span class="font-body-sm">测试语音效果</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Status Bento Card (Now fixed at bottom or as a final section) -->
+<section class="glass-panel rounded-xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl border-primary/20 bg-primary/5">
+<div class="flex items-center gap-5">
+<div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<p class="font-headline-md text-primary font-semibold">系统状态正常</p>
+<p class="text-mono-status font-mono-status text-on-surface-variant opacity-80">延迟: 24ms | 内存占用: 1.2GB | 引擎就绪</p>
+</div>
+</div>
+<div class="flex gap-4 w-full md:w-auto">
+<button class="flex-1 md:flex-none px-8 py-3 rounded-xl font-body-sm font-semibold border border-outline-variant/40 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/40 transition-all active:scale-95">放弃更改</button>
+<button class="flex-1 md:flex-none px-10 py-3 rounded-xl font-body-sm font-semibold bg-primary text-on-primary hover:bg-primary-fixed-dim shadow-xl shadow-primary/30 transition-all active:scale-95">保存并应用</button>
+</div>
+</section>
+</div>
+</main>
+</div>
+<!-- Decorative Background -->
+<div class="fixed bottom-0 right-0 w-[500px] h-[500px] pointer-events-none opacity-10 z-0 select-none">
+<div class="absolute inset-0 bg-gradient-to-t from-surface to-transparent"></div>
+<img alt="Decorative Background" class="w-full h-full object-contain filter grayscale brightness-50 contrast-125" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYJPkKKaoDIWKX3bJgt1RZvS2pBSoOeeIqITiUF5aQs9K9HOlivnIZzuF5cP9fDoFNsC5lY8xUGsFX62F6kC2F3j9GoSY8CDx8L6PONzFsPOTUU7_-Iay9HQEILrn-UdoV9dG5KJu8nlGhUfGLvEqDsB7GTCROaIgE4uahwZtXVCLXWe70pE9mUOq6mchIdincHDbaYNTTKlB102EGIKfLQiFxK3CJKnB5tPF2QVPgGS_G-12c-3lQ_wc-B6yzRMrWROT7ZheAMYY"/>
+</div>
+</body></html>

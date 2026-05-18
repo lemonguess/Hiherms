@@ -1,0 +1,15 @@
+node_modules
+out
+dist
+.DS_Store
+*.log
+*.tsbuildinfo
+.vite/
+.cache/
+.electron-vite/
+.tmp/
+.env
+.env.local
+
+# Local duplicate archive of the primary Live2D model. The extracted model is tracked.
+live2d/tuzi_mian__2_.zip
