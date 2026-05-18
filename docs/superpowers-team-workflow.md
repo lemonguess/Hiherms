@@ -59,9 +59,9 @@ Superpowers 只管“怎么协作”，不改变项目架构。
 
 这些规则高于 Superpowers：
 
-- 不开发多 Provider 抽象；只对接本地 Hermes Gateway。
+- 不开发多 Provider 抽象；只对接本地 Hermes Agent Bridge。
 - 不 fork / 不修改 Hermes。
-- Streaming First：SSE -> buffer -> state machine -> AST。
+- Streaming First：Agent delta/SSE -> buffer -> state machine -> AST。
 - Message 使用 `MessagePart` AST，不退化成字符串消息。
 - Live2D emotion / motion 必须走 runtime 映射，不直接调用抽象字符串。
 - CosyVoice 当前只保留占位，不实现 HTTP 调用。

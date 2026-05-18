@@ -7,7 +7,7 @@
 
 ## 项目一句话
 
-HermesPet = Electron 桌面宠物 + Hermes Gateway (LLM) + CosyVoice (TTS) + Live2D，
+HermesPet = Electron 桌面宠物 + Hermes Agent Bridge + CosyVoice (TTS) + Live2D，
 **核心是 Runtime Layer**（流式解析 / Emotion / Motion / Audio Queue / Protocol），
 不是聊天框。
 
@@ -38,9 +38,9 @@ HermesPet/
 
 ## 红线（开始写代码之前必读）
 
-1. **不开发多模型/多 Provider 抽象** —— 当前阶段只对接本地 Hermes Gateway (OpenAI Compatible API)。
-2. **不 fork / 不修改 Hermes** —— 仅通过 OpenAI Compatible API + System Prompt 接入。
-3. **Streaming First** —— 禁用 `text.replace()`、禁用整段拼接后再解析。必须 SSE → buffer → state machine → AST。
+1. **不开发多模型/多 Provider 抽象** —— 当前阶段只对接本地 Hermes Agent Bridge，provider/model 解析交给本机 Hermes 配置。
+2. **不 fork / 不修改 Hermes** —— 仅通过 Hermes Agent Bridge + System Prompt 接入。
+3. **Streaming First** —— 禁用 `text.replace()`、禁用整段拼接后再解析。必须 Agent delta/SSE → buffer → state machine → AST。
 4. **Message 不是字符串** —— 用 AST (`MessagePart` 联合类型)，禁止 `type Message = string`。
 5. **LLM 只生成意图，Runtime 执行** —— `<emotion>` / `<motion>` / `<speech>` / `<media>` / `<tool>` / `<status>` 是抽象意图标签，由 Runtime 映射到实际能力。
    - **抽象意图 ≠ Live2D 实参 / 实文件名**。禁止 `model.motion('wave')` / `model.expression('happy')` 这种把抽象字符串直接喂 SDK 的写法。必须经 motion-runtime / emotion-runtime 的映射表，根据当前装载模型 (`model.internalModel.settings`) 实有的 Motions / Expressions / 参数 ID 决定执行路径。详见 project.md §11 / §20。

@@ -10,6 +10,7 @@
 
 <!-- 新条目追加在本注释下方 -->
 
+- [iteration-009 — hermes-agent-bridge](iteration-009-hermes-agent-bridge.md) — renderer localhost API 改为 Electron main Hermes Agent Bridge；HRP 增量解析 + 可见文本过滤 + AST 持久化；typecheck + build + dev smoke 通过
 - [iteration-008 — live2d-regression-fixes](iteration-008-live2d-regression-fixes.md) — 修复暗黑模式衣物消失 / 视线回正未持续生效；改用 internalModel beforeModelUpdate；typecheck + build 通过
 - [iteration-007 — known-bugfixes](iteration-007-known-bugfixes.md) — 修复流式渲染 reactivity / 暗黑服装互斥与持久 opacity / 视线回正兜底；typecheck + build 通过，dev 启动成功
 - [iteration-006 — superpowers-skill](iteration-006-superpowers-skill.md) — 安装 Superpowers skill / 团队协作说明 / Codex 重启后生效

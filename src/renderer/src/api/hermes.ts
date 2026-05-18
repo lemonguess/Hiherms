@@ -1,5 +1,9 @@
-const DEFAULT_BASE = 'http://127.0.0.1:8642/v1'
-const DEFAULT_KEY = 'hermespet-local-dev'
+import type { AgentHistoryMessage, AgentRunEvent, MessagePart } from '@shared/types'
+import { appendVisibleText } from '../runtime/display-text'
+import { createStreamParser } from '../runtime/stream-parser'
+
+const DEFAULT_BASE = 'Hermes Agent Bridge'
+const DEFAULT_KEY = 'local-ipc'
 
 export interface HermesConfig {
   baseUrl: string
@@ -12,16 +16,12 @@ export interface ChatMessage {
 }
 
 export interface SendOptions {
+  sessionId: string
   messages: ChatMessage[]
   onDelta: (text: string) => void
-  onDone: (fullText: string) => void
+  onDone: (fullText: string, parts: MessagePart[]) => void
   onError: (err: Error) => void
 }
-
-type ParsedSseLine =
-  | { type: 'delta'; text: string }
-  | { type: 'done' }
-  | { type: 'empty' }
 
 let config: HermesConfig = {
   baseUrl: DEFAULT_BASE,
@@ -29,7 +29,7 @@ let config: HermesConfig = {
 }
 
 export function setHermesConfig(c: Partial<HermesConfig>): void {
-  if (c.baseUrl !== undefined) config.baseUrl = c.baseUrl.replace(/\/+$/, '')
+  if (c.baseUrl !== undefined) config.baseUrl = c.baseUrl
   if (c.apiKey !== undefined) config.apiKey = c.apiKey
 }
 
@@ -38,127 +38,95 @@ export function getHermesConfig(): HermesConfig {
 }
 
 export async function checkHealth(): Promise<boolean> {
-  try {
-    const base = config.baseUrl.replace(/\/v1\/?$/, '')
-    const res = await fetch(`${base}/health`, { signal: AbortSignal.timeout(3000) })
-    return res.ok
-  } catch {
-    return false
-  }
+  return window.hermes?.agent?.check() ?? false
 }
 
-export async function listModels(): Promise<string[]> {
-  const res = await fetch(`${config.baseUrl}/models`, {
-    headers: { Authorization: `Bearer ${config.apiKey}` },
-  })
-  if (!res.ok) throw new Error(`Models request failed: ${res.status}`)
-  const data = await res.json()
-  return data.data?.map((m: { id: string }) => m.id) ?? []
+function toAgentHistory(messages: ChatMessage[]): AgentHistoryMessage[] {
+  return messages
+    .filter(message => message.content.trim().length > 0)
+    .map(message => ({
+      role: message.role,
+      content: message.content,
+    }))
 }
 
-function parseChatCompletionSseLine(line: string): ParsedSseLine {
-  const trimmed = line.trim()
-  if (!trimmed || !trimmed.startsWith('data:')) return { type: 'empty' }
-
-  const payload = trimmed.slice(5).trim()
-  if (!payload) return { type: 'empty' }
-  if (payload === '[DONE]') return { type: 'done' }
-
-  try {
-    const evt = JSON.parse(payload)
-    const content = evt.choices?.[0]?.delta?.content
-    if (typeof content === 'string' && content.length > 0) {
-      return { type: 'delta', text: content }
-    }
-  } catch {
-    // skip malformed JSON lines
-  }
-
-  return { type: 'empty' }
-}
-
-export function sendMessage({ messages, onDelta, onDone, onError }: SendOptions): AbortController {
+export function sendMessage({ sessionId, messages, onDelta, onDone, onError }: SendOptions): AbortController {
   const ac = new AbortController()
+  const parser = createStreamParser()
+  const parts: MessagePart[] = []
+  let fullText = ''
+  let runId = ''
+  let disposed = false
 
-  ;(async () => {
-    try {
-      const res = await fetch(`${config.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${config.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'hermes',
-          messages,
-          stream: true,
-        }),
-        signal: ac.signal,
-      })
+  const latestUser = [...messages].reverse().find(message => message.role === 'user')
+  const history = latestUser ? messages.slice(0, messages.lastIndexOf(latestUser)) : messages
 
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`API ${res.status}: ${text}`)
-      }
-
-      const reader = res.body?.getReader()
-      if (!reader) throw new Error('No response body')
-
-      const decoder = new TextDecoder()
-      let buffer = ''
-      let fullText = ''
-
-      const handleLine = (line: string): { done: boolean; gotDelta: boolean } => {
-        const parsed = parseChatCompletionSseLine(line)
-        if (parsed.type === 'done') {
-          onDone(fullText)
-          return { done: true, gotDelta: false }
-        }
-        if (parsed.type === 'delta') {
-          fullText += parsed.text
-          onDelta(parsed.text)
-          return { done: false, gotDelta: true }
-        }
-        return { done: false, gotDelta: false }
-      }
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
-
-        let gotDelta = false
-        for (const line of lines) {
-          const result = handleLine(line)
-          if (result.done) return
-          gotDelta ||= result.gotDelta
-        }
-
-        // Yield to event loop so Vue can flush DOM updates between chunks
-        if (gotDelta) {
-          await new Promise(r => setTimeout(r, 0))
-        }
-      }
-
-      buffer += decoder.decode()
-      if (buffer.trim()) {
-        for (const line of buffer.split('\n')) {
-          const result = handleLine(line)
-          if (result.done) return
-        }
-      }
-
-      // Stream ended without explicit [DONE]
-      onDone(fullText)
-    } catch (err) {
-      if ((err as Error).name !== 'AbortError') {
-        onError(err instanceof Error ? err : new Error(String(err)))
-      }
+  const handleParts = (nextParts: MessagePart[]): void => {
+    if (nextParts.length === 0) return
+    parts.push(...nextParts)
+    const visible = appendVisibleText('', nextParts)
+    if (visible) {
+      fullText += visible
+      onDelta(visible)
     }
-  })()
+  }
+
+  const finish = (): void => {
+    if (disposed) return
+    handleParts(parser.flush())
+    disposed = true
+    unsubscribe()
+    onDone(fullText, parts)
+  }
+
+  const fail = (err: Error): void => {
+    if (disposed) return
+    disposed = true
+    unsubscribe()
+    onError(err)
+  }
+
+  const onEvent = (event: AgentRunEvent): void => {
+    if (event.sessionId !== sessionId) return
+    if (runId && event.runId && event.runId !== runId) return
+    if (!runId && event.runId) runId = event.runId
+
+    if (event.type === 'delta') {
+      handleParts(parser.feed(event.delta))
+    } else if (event.type === 'done') {
+      finish()
+    } else if (event.type === 'error') {
+      fail(new Error(event.error))
+    }
+  }
+
+  const unsubscribe = window.hermes?.agent?.onEvent(onEvent) ?? (() => undefined)
+
+  if (!window.hermes?.agent) {
+    fail(new Error('Hermes Agent Bridge is not available'))
+    return ac
+  }
+
+  window.hermes.agent.send({
+    sessionId,
+    message: latestUser?.content ?? '',
+    history: toAgentHistory(history),
+  }).then(started => {
+    if (disposed) {
+      void window.hermes?.agent?.abort(sessionId, started.runId)
+      return
+    }
+    runId = started.runId
+  }).catch(err => {
+    fail(err instanceof Error ? err : new Error(String(err)))
+  })
+
+  ac.signal.addEventListener('abort', () => {
+    if (disposed) return
+    disposed = true
+    unsubscribe()
+    void window.hermes?.agent?.abort(sessionId, runId || undefined)
+  }, { once: true })
 
   return ac
 }

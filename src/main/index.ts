@@ -1,12 +1,15 @@
 import { app, BrowserWindow, ipcMain, screen } from 'electron'
 import { IPC } from '@shared/ipc-channels'
+import type { MessagePart } from '@shared/types'
 import { createMainWindow, createChatWindow, createContextMenuWindow } from './window'
 import { ConversationStore } from './store'
+import { HermesBridgeService } from './hermes/bridge-service'
 
 let mainWindow: BrowserWindow | null = null
 let chatWindow: BrowserWindow | null = null
 let contextMenuWindow: BrowserWindow | null = null
 let store: ConversationStore | null = null
+let bridgeService: HermesBridgeService | null = null
 
 function openChat(tab?: string): void {
   if (chatWindow && !chatWindow.isDestroyed()) {
@@ -83,13 +86,15 @@ function registerIpc(): void {
   ipcMain.handle(IPC.Conversations.GetMessages, (_e, conversationId: string, before?: number, limit?: number) =>
     store?.getMessages(conversationId, before, limit) ?? [],
   )
-  ipcMain.handle(IPC.Conversations.AddMessage, (_e, conversationId: string, role: 'user' | 'hermes', text: string) =>
-    store?.addMessage(conversationId, role, text),
+  ipcMain.handle(IPC.Conversations.AddMessage, (_e, conversationId: string, role: 'user' | 'hermes', text: string, ast?: unknown) =>
+    store?.addMessage(conversationId, role, text, Array.isArray(ast) ? ast as MessagePart[] : undefined),
   )
 }
 
 app.whenReady().then(() => {
   store = new ConversationStore(app.getPath('userData'))
+  bridgeService = new HermesBridgeService()
+  bridgeService.register()
   registerIpc()
   mainWindow = createMainWindow()
 
@@ -139,4 +144,8 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('before-quit', () => {
+  void bridgeService?.stop()
 })

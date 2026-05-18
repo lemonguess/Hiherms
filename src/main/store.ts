@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+import type { MessagePart } from '@shared/types'
 
 export interface Conversation {
   id: string
@@ -13,6 +14,7 @@ export interface StoredMessage {
   role: 'user' | 'hermes'
   text: string
   createdAt: number
+  ast?: MessagePart[]
 }
 
 interface StoreData {
@@ -80,13 +82,14 @@ export class ConversationStore {
     return msgs.reverse() // Return in chronological order
   }
 
-  addMessage(conversationId: string, role: 'user' | 'hermes', text: string): StoredMessage {
+  addMessage(conversationId: string, role: 'user' | 'hermes', text: string, ast?: MessagePart[]): StoredMessage {
     const msg: StoredMessage = {
       id: Date.now() + Math.floor(Math.random() * 1000),
       conversationId,
       role,
       text,
       createdAt: Date.now(),
+      ...(ast ? { ast } : {}),
     }
     this.data.messages.push(msg)
     this.save()

@@ -12,6 +12,12 @@ export const IPC = {
     Close: 'chat:close',
     SetTab: 'chat:set-tab',
   },
+  Agent: {
+    Send: 'agent:send',
+    Abort: 'agent:abort',
+    Event: 'agent:event',
+    Check: 'agent:check',
+  },
   Pet: {
     Hide: 'pet:hide',
     Show: 'pet:show',
@@ -42,3 +48,7 @@ export type IpcChannel =
   | typeof IPC.Window.Minimize
   | typeof IPC.Window.Close
   | typeof IPC.Window.ToggleAlwaysOnTop
+  | typeof IPC.Agent.Send
+  | typeof IPC.Agent.Abort
+  | typeof IPC.Agent.Event
+  | typeof IPC.Agent.Check

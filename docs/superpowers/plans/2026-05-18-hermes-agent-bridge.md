@@ -18,7 +18,7 @@
 - Create: `tests/runtime-stream-parser.test.ts`
 - Create: `tests/tsconfig.json`
 
-- [ ] **Step 1: Write failing parser tests**
+- [x] **Step 1: Write failing parser tests**
 
 ```ts
 import test from 'node:test'
@@ -49,13 +49,13 @@ test('parses split HRP tags and keeps only text visible', () => {
 })
 ```
 
-- [ ] **Step 2: Run tests and verify they fail**
+- [x] **Step 2: Run tests and verify they fail**
 
 Run: `pnpm exec tsc -p tests/tsconfig.json && node --test /private/tmp/hermespet-tests/tests/runtime-stream-parser.test.js`
 
 Expected: FAIL because `display-text.ts` does not exist and parser stubs emit no parts.
 
-- [ ] **Step 3: Implement streaming parser and visible projection**
+- [x] **Step 3: Implement streaming parser and visible projection**
 
 Implement character-buffer parsing for:
 
@@ -66,7 +66,7 @@ Implement character-buffer parsing for:
 
 `appendVisibleText(current, parts)` appends only `TextPart.content`.
 
-- [ ] **Step 4: Verify parser tests pass**
+- [x] **Step 4: Verify parser tests pass**
 
 Run: `pnpm exec tsc -p tests/tsconfig.json && node --test /private/tmp/hermespet-tests/tests/runtime-stream-parser.test.js`
 
@@ -83,7 +83,7 @@ Expected: PASS.
 - Modify: `src/shared/ipc-channels.ts`
 - Modify: `src/main/index.ts`
 
-- [ ] **Step 1: Write bridge IPC/type test**
+- [x] **Step 1: Write bridge IPC/type test**
 
 Create a Node test that imports shared types after TypeScript compilation and asserts the required IPC channel names are present:
 
@@ -99,13 +99,13 @@ test('defines Hermes Agent bridge IPC channels', () => {
 })
 ```
 
-- [ ] **Step 2: Run test and verify it fails**
+- [x] **Step 2: Run test and verify it fails**
 
 Run: `pnpm exec tsc -p tests/tsconfig.json && node --test /private/tmp/hermespet-tests/tests/agent-ipc.test.js`
 
 Expected: FAIL because `IPC.Agent` does not exist.
 
-- [ ] **Step 3: Implement bridge service**
+- [x] **Step 3: Implement bridge service**
 
 Implement:
 
@@ -115,7 +115,7 @@ Implement:
 - Electron IPC `agent:send`, `agent:abort`, `agent:event`;
 - default HermesPet system instructions prepended to runs.
 
-- [ ] **Step 4: Verify bridge compile checks pass**
+- [x] **Step 4: Verify bridge compile checks pass**
 
 Run:
 
@@ -135,21 +135,21 @@ Expected: both pass.
 - Modify: `src/renderer/src/chat/ChatApp.vue`
 - Modify: `src/main/store.ts`
 
-- [ ] **Step 1: Write display/store test**
+- [x] **Step 1: Write display/store test**
 
 Extend the parser test to assert assistant stored metadata contains AST while visible text remains filtered.
 
-- [ ] **Step 2: Run test and verify it fails**
+- [x] **Step 2: Run test and verify it fails**
 
 Run: `pnpm exec tsc -p tests/tsconfig.json && node --test /private/tmp/hermespet-tests/tests/runtime-stream-parser.test.js`
 
 Expected: FAIL until `display-text.ts` and AST handling exist.
 
-- [ ] **Step 3: Replace renderer fetch API with IPC adapter**
+- [x] **Step 3: Replace renderer fetch API with IPC adapter**
 
 Keep `sendMessage()` as the ChatApp-facing API, but route it through `window.hermes.agent.send()`. Parse deltas with `createStreamParser()`, append only `TextPart`, collect AST parts, and store assistant visible text plus AST metadata.
 
-- [ ] **Step 4: Verify renderer typecheck**
+- [x] **Step 4: Verify renderer typecheck**
 
 Run: `pnpm typecheck:web`
 
@@ -161,11 +161,11 @@ Expected: PASS.
 - Create: `docs/iteration-009-hermes-agent-bridge.md`
 - Modify: `docs/README.md`
 
-- [ ] **Step 1: Write iteration log**
+- [x] **Step 1: Write iteration log**
 
 Document motivation, code changes, verification, and known limitations.
 
-- [ ] **Step 2: Run all verification**
+- [x] **Step 2: Run all verification**
 
 Run:
 
@@ -179,7 +179,7 @@ pnpm build
 
 Expected: all pass.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add .

@@ -3,8 +3,8 @@ alwaysApply: false
 ---
 # HermesPet 项目规范
 
-版本：v0.2  
-架构：Electron + Vue3 + Hermes Gateway + CosyVoice + Live2D  
+版本：v0.3
+架构：Electron + Vue3 + Hermes Agent Bridge + CosyVoice + Live2D
 定位：AI Native Desktop Runtime
 
 ---
@@ -43,30 +43,45 @@ Runtime 负责：
 
 当前阶段：
 
-# 仅支持本地 Hermes Gateway
+# 仅支持本地 Hermes Agent Bridge
 
 运行方式：
 
 ```text
 Electron
 ↓
-spawn Hermes Gateway
+main process 启动 HermesPet Bridge
 ↓
-localhost API
+Bridge 调用本机 Hermes Agent 交互运行时
+↓
+Hermes 负责底层模型 / 工具 / Agent loop
 ```
 
-Hermes 通过 OpenAI Compatible API 接入。
+Renderer 禁止直接访问 localhost Hermes API。聊天入口必须经过：
+
+```text
+Renderer
+↓
+preload IPC
+↓
+Electron main
+↓
+HermesPet Bridge
+↓
+Hermes Agent
+```
 
 未来可能支持：
 
-- 远端 Hermes Gateway
+- 远端 Hermes Gateway / Agent Bridge
 
 但当前阶段：
 
 # 不开发多模型兼容
 # 不开发 Provider 抽象层
 
-仅预留接口结构。
+仅预留接口结构。Hermes 的 provider / model 解析由本机 Hermes 配置承担，HermesPet 不在 UI
+层重新做一套 provider 管理。
 
 ---
 
@@ -88,9 +103,10 @@ Hermes 通过 OpenAI Compatible API 接入。
 
 ## AI
 
-- Hermes Gateway
-- OpenAI Compatible API
-- SSE Streaming
+- Hermes Agent Bridge
+- Electron IPC
+- Python 本地 socket bridge
+- Agent delta Streaming
 
 ## Live2D
 
@@ -117,9 +133,9 @@ Electron UI
  ↓
 Runtime Layer
  ↓
-Hermes Gateway
+Hermes Agent Bridge
  ↓
-LLM Stream
+Agent Delta Stream
  ↓
 HRP Parser
  ↓
@@ -142,7 +158,7 @@ Renderer / TTS / Live2D
 
 仅通过：
 
-- OpenAI Compatible API
+- Hermes Agent Bridge
 - System Prompt
 
 接入。
@@ -153,7 +169,7 @@ Renderer / TTS / Live2D
 
 所有解析必须支持：
 
-- SSE 分块
+- Agent delta / SSE 分块
 - 增量解析
 - 半截标签
 

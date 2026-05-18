@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2022",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "baseUrl": "..",
+    "paths": {
+      "@shared/*": ["src/shared/*"]
+    },
+    "rootDir": "..",
+    "outDir": "/private/tmp/hermespet-tests"
+  },
+  "include": [
+    "../tests/**/*.ts",
+    "../src/renderer/src/runtime/**/*.ts",
+    "../src/shared/**/*.ts"
+  ]
+}

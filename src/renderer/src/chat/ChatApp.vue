@@ -3,6 +3,7 @@ import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import MarkdownIt from 'markdown-it'
 import { sendMessage, checkHealth, setHermesConfig, getHermesConfig, type ChatMessage } from '../api/hermes'
 import InteractionPanel from '../components/InteractionPanel.vue'
+import type { MessagePart } from '@shared/types'
 
 const md = new MarkdownIt({ html: false, linkify: true, breaks: true })
 
@@ -14,6 +15,7 @@ interface Message {
   text: string
   streaming?: boolean
   storedId?: number // ID from the persistent store, used for dedup
+  parts?: MessagePart[]
 }
 
 const activeTab = ref<Tab>((window.location.hash.slice(1) as Tab) || 'chat')
@@ -97,7 +99,7 @@ async function openConversation(id: string): Promise<void> {
   // Load stored messages for this conversation
   const stored = await window.hermes?.conversations?.getMessages(id) ?? []
   for (const m of stored) {
-    messages.value.push({ id: nextId++, role: m.role, text: m.text, storedId: m.id })
+    messages.value.push({ id: nextId++, role: m.role, text: m.text, storedId: m.id, parts: m.ast })
     if (!oldestLoadedAt.value || m.createdAt < oldestLoadedAt.value) {
       oldestLoadedAt.value = m.createdAt
     }
@@ -143,7 +145,7 @@ async function loadOlderMessages(): Promise<void> {
     const existingIds = new Set(messages.value.map(m => m.storedId).filter(Boolean))
     const prepend: Message[] = stored
       .filter(m => !existingIds.has(m.id))
-      .map(m => ({ id: nextId++, role: m.role, text: m.text, storedId: m.id }))
+      .map(m => ({ id: nextId++, role: m.role, text: m.text, storedId: m.id, parts: m.ast }))
     if (prepend.length > 0) {
       messages.value = [...prepend, ...messages.value]
       oldestLoadedAt.value = stored[0].createdAt
@@ -214,27 +216,29 @@ async function send(): Promise<void> {
 
   isStreaming.value = true
 
-  // Build messages array from history for API context
+  // Build messages array from history for bridge context
   const apiMessages: ChatMessage[] = messages.value
     .filter(m => m.text) // skip empty streaming placeholders
     .map(m => ({ role: m.role === 'hermes' ? 'assistant' : 'user', content: m.text }))
 
   currentAbort = sendMessage({
+    sessionId: convId,
     messages: apiMessages,
     onDelta(delta) {
       updateMessage(hermesMsgId, msg => ({ ...msg, text: msg.text + delta }))
       scrollToBottom()
     },
-    async onDone(fullText) {
+    async onDone(fullText, parts) {
       const doneMsg = updateMessage(hermesMsgId, msg => ({
         ...msg,
         text: fullText || msg.text,
+        parts,
         streaming: false,
       }))
       isStreaming.value = false
       currentAbort = null
       if (convId && doneMsg) {
-        const stored = await window.hermes?.conversations?.addMessage(convId, 'hermes', doneMsg.text)
+        const stored = await window.hermes?.conversations?.addMessage(convId, 'hermes', doneMsg.text, parts)
         updateMessage(hermesMsgId, msg => ({ ...msg, storedId: stored?.id }))
       }
       scrollToBottom()
@@ -301,8 +305,8 @@ function applySettings(): void {
 }
 
 function resetSettings(): void {
-  baseUrl.value = 'http://127.0.0.1:8642/v1'
-  apiKey.value = 'hermespet-local-dev'
+  baseUrl.value = 'Hermes Agent Bridge'
+  apiKey.value = 'local-ipc'
   applySettings()
 }
 </script>
@@ -535,7 +539,7 @@ function resetSettings(): void {
         <header class="sticky top-0 z-10 flex h-16 items-center justify-between bg-surface/70 px-8 backdrop-blur-xl">
           <div>
             <h2 class="font-headline-lg text-headline-lg text-primary">Hermes 配置</h2>
-            <p class="font-body-sm text-on-surface-variant opacity-80">自定义您的 AI 伴侣性能参数与交互行为</p>
+            <p class="font-body-sm text-on-surface-variant opacity-80">本地 Hermes Agent Bridge 与桌宠交互行为</p>
           </div>
         </header>
         <div class="flex-1 space-y-8 overflow-y-auto px-8 pb-32 pt-2">
@@ -562,13 +566,13 @@ function resetSettings(): void {
             </div>
             <div class="space-y-6">
               <div class="flex flex-col gap-2">
-                <label class="font-label-caps text-label-caps uppercase tracking-widest text-on-surface-variant px-1">Base URL</label>
-                <input v-model="baseUrl" class="glass-border w-full rounded-lg bg-surface-container-highest px-4 py-3 font-body-lg text-on-surface outline-none focus:ring-1 focus:ring-primary/50" placeholder="请输入接口地址" />
+                <label class="font-label-caps text-label-caps uppercase tracking-widest text-on-surface-variant px-1">Bridge Mode</label>
+                <input v-model="baseUrl" class="glass-border w-full rounded-lg bg-surface-container-highest px-4 py-3 font-body-lg text-on-surface outline-none focus:ring-1 focus:ring-primary/50" placeholder="Hermes Agent Bridge" />
               </div>
               <div class="flex flex-col gap-2">
-                <label class="font-label-caps text-label-caps uppercase tracking-widest text-on-surface-variant px-1">API Key</label>
+                <label class="font-label-caps text-label-caps uppercase tracking-widest text-on-surface-variant px-1">Local Auth</label>
                 <div class="relative">
-                  <input v-model="apiKey" :type="showApiKey ? 'text' : 'password'" class="glass-border w-full rounded-lg bg-surface-container-highest px-4 py-3 pr-10 font-body-lg text-on-surface outline-none focus:ring-1 focus:ring-primary/50" placeholder="请输入授权密钥" />
+                  <input v-model="apiKey" :type="showApiKey ? 'text' : 'password'" class="glass-border w-full rounded-lg bg-surface-container-highest px-4 py-3 pr-10 font-body-lg text-on-surface outline-none focus:ring-1 focus:ring-primary/50" placeholder="local-ipc" />
                   <span class="material-symbols-outlined absolute right-3 top-3 cursor-pointer text-on-surface-variant hover:text-primary" @click="showApiKey = !showApiKey">
                     {{ showApiKey ? 'visibility_off' : 'visibility' }}
                   </span>
@@ -653,7 +657,7 @@ function resetSettings(): void {
                   {{ connectionStatus === 'connected' ? 'Hermes Agent 已连接' : 'Hermes Agent 未连接' }}
                 </p>
                 <p class="font-mono-status text-mono-status text-on-surface-variant opacity-80">
-                  {{ baseUrl }} | {{ connectionStatus === 'connected' ? 'API 就绪' : '请检查 Hermes Agent 是否启动' }}
+                  {{ baseUrl }} | {{ connectionStatus === 'connected' ? 'Bridge 就绪' : '请检查 Hermes Agent 是否启动' }}
                 </p>
               </div>
             </div>

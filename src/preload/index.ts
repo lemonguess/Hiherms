@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '@shared/ipc-channels'
+import type { AgentRunEvent, AgentRunStarted, AgentSendRequest, MessagePart } from '@shared/types'
 
 interface Conversation {
   id: string
@@ -13,6 +14,7 @@ interface StoredMessage {
   role: 'user' | 'hermes'
   text: string
   createdAt: number
+  ast?: MessagePart[]
 }
 
 const api = {
@@ -29,6 +31,16 @@ const api = {
       const handler = (_e: unknown, tab: string): void => cb(tab)
       ipcRenderer.on(IPC.Chat.SetTab, handler)
       return () => { ipcRenderer.removeListener(IPC.Chat.SetTab, handler) }
+    },
+  },
+  agent: {
+    check: (): Promise<boolean> => ipcRenderer.invoke(IPC.Agent.Check),
+    send: (request: AgentSendRequest): Promise<AgentRunStarted> => ipcRenderer.invoke(IPC.Agent.Send, request),
+    abort: (sessionId: string, runId?: string): Promise<boolean> => ipcRenderer.invoke(IPC.Agent.Abort, sessionId, runId),
+    onEvent: (cb: (event: AgentRunEvent) => void) => {
+      const handler = (_e: unknown, event: AgentRunEvent): void => cb(event)
+      ipcRenderer.on(IPC.Agent.Event, handler)
+      return () => { ipcRenderer.removeListener(IPC.Agent.Event, handler) }
     },
   },
   pet: {
@@ -75,8 +87,8 @@ const api = {
     remove: (id: string): Promise<boolean> => ipcRenderer.invoke(IPC.Conversations.Remove, id),
     getMessages: (conversationId: string, before?: number, limit?: number): Promise<StoredMessage[]> =>
       ipcRenderer.invoke(IPC.Conversations.GetMessages, conversationId, before, limit),
-    addMessage: (conversationId: string, role: 'user' | 'hermes', text: string): Promise<StoredMessage> =>
-      ipcRenderer.invoke(IPC.Conversations.AddMessage, conversationId, role, text),
+    addMessage: (conversationId: string, role: 'user' | 'hermes', text: string, ast?: MessagePart[]): Promise<StoredMessage> =>
+      ipcRenderer.invoke(IPC.Conversations.AddMessage, conversationId, role, text, ast),
   },
 }
 

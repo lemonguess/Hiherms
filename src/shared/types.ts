@@ -73,3 +73,48 @@ export type MessagePart =
   | MediaPart
   | ToolPart
   | StatusPart
+
+export interface AgentHistoryMessage {
+  role: 'user' | 'assistant' | 'system'
+  content: string
+}
+
+export interface AgentSendRequest {
+  sessionId: string
+  message: string
+  history?: AgentHistoryMessage[]
+  instructions?: string
+  model?: string
+  provider?: string
+}
+
+export interface AgentRunStarted {
+  sessionId: string
+  runId: string
+}
+
+export type AgentRunEvent =
+  | {
+      type: 'delta'
+      sessionId: string
+      runId: string
+      delta: string
+    }
+  | {
+      type: 'runtime-event'
+      sessionId: string
+      runId: string
+      event: Record<string, unknown>
+    }
+  | {
+      type: 'done'
+      sessionId: string
+      runId: string
+      fullText: string
+    }
+  | {
+      type: 'error'
+      sessionId: string
+      runId?: string
+      error: string
+    }
