@@ -30,6 +30,7 @@ export const IPC = {
     Summary: 'hermes-dashboard:summary',
     Models: 'hermes-dashboard:models',
     Logs: 'hermes-dashboard:logs',
+    Details: 'hermes-dashboard:details',
   },
   Media: {
     Import: 'media:import',
@@ -77,4 +78,5 @@ export type IpcChannel =
   | typeof IPC.HermesDashboard.Summary
   | typeof IPC.HermesDashboard.Models
   | typeof IPC.HermesDashboard.Logs
+  | typeof IPC.HermesDashboard.Details
   | typeof IPC.Media.Import

@@ -170,3 +170,72 @@ export interface HermesDashboardSummary {
   logs: HermesLogFile[]
   modules: HermesDashboardModule[]
 }
+
+export interface HermesProfileDetail {
+  name: string
+  active: boolean
+  path: string
+  configExists: boolean
+  defaultModel: string
+  kind: 'root' | 'profile'
+}
+
+export type HermesMemorySection = 'memory' | 'user' | 'soul'
+
+export interface HermesMemoryFile {
+  section: HermesMemorySection
+  label: string
+  path: string
+  exists: boolean
+  size: string
+  modified: string
+  preview: string
+}
+
+export interface HermesSkillSummary {
+  name: string
+  category: string
+  description: string
+  enabled: boolean
+  source: 'builtin' | 'hub' | 'local'
+}
+
+export interface HermesSkillCategory {
+  name: string
+  description: string
+  skills: HermesSkillSummary[]
+}
+
+export interface HermesPluginSummary {
+  name: string
+  path: string
+  hasManifest: boolean
+  modified: string
+}
+
+export interface HermesUsageSummary {
+  source: 'hermespet-local'
+  available: boolean
+  conversations: number
+  messages: number
+  inputTokens: number
+  outputTokens: number
+  reason: string
+}
+
+export interface HermesGatewayRow {
+  profile: string
+  active: boolean
+  running: boolean | null
+  status: 'running' | 'stopped' | 'unknown'
+  raw?: HermesCliResult
+}
+
+export interface HermesDashboardDetails {
+  profiles: HermesProfileDetail[]
+  gateways: HermesGatewayRow[]
+  skills: HermesSkillCategory[]
+  plugins: HermesPluginSummary[]
+  memory: HermesMemoryFile[]
+  usage: HermesUsageSummary
+}

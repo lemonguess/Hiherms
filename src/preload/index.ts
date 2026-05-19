@@ -4,6 +4,7 @@ import type {
   AgentRunEvent,
   AgentRunStarted,
   AgentSendRequest,
+  HermesDashboardDetails,
   HermesDashboardSummary,
   HermesLogFile,
   HermesModelGroup,
@@ -65,6 +66,7 @@ const api = {
     summary: (): Promise<HermesDashboardSummary> => ipcRenderer.invoke(IPC.HermesDashboard.Summary),
     models: (): Promise<HermesModelGroup[]> => ipcRenderer.invoke(IPC.HermesDashboard.Models),
     logs: (): Promise<HermesLogFile[]> => ipcRenderer.invoke(IPC.HermesDashboard.Logs),
+    details: (): Promise<HermesDashboardDetails> => ipcRenderer.invoke(IPC.HermesDashboard.Details),
   },
   media: {
     filePath: (file: File): string => webUtils.getPathForFile(file),

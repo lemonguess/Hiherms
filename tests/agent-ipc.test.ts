@@ -12,4 +12,5 @@ test('defines Hermes dashboard IPC channels', () => {
   assert.equal(IPC.HermesDashboard.Summary, 'hermes-dashboard:summary')
   assert.equal(IPC.HermesDashboard.Models, 'hermes-dashboard:models')
   assert.equal(IPC.HermesDashboard.Logs, 'hermes-dashboard:logs')
+  assert.equal((IPC.HermesDashboard as Record<string, string>).Details, 'hermes-dashboard:details')
 })

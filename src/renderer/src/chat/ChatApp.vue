@@ -3,7 +3,7 @@ import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import MarkdownIt from 'markdown-it'
 import { sendMessage, checkHealth, setHermesConfig, getHermesConfig, type ChatMessage } from '../api/hermes'
 import InteractionPanel from '../components/InteractionPanel.vue'
-import type { HermesDashboardSummary, HermesGatewayStatus, MediaPart, MessagePart } from '@shared/types'
+import type { HermesDashboardDetails, HermesDashboardSummary, HermesGatewayStatus, MediaPart, MessagePart } from '@shared/types'
 
 const md = new MarkdownIt({ html: false, linkify: true, breaks: true })
 
@@ -71,6 +71,7 @@ let isLoadingOlder = false
 const pendingMedia = ref<MediaPart[]>([])
 const fileInputEl = ref<HTMLInputElement | null>(null)
 const dashboardSummary = ref<HermesDashboardSummary | null>(null)
+const dashboardDetails = ref<HermesDashboardDetails | null>(null)
 const dashboardLoading = ref(false)
 const collapsedNavGroups = ref<Record<string, boolean>>({})
 
@@ -127,6 +128,17 @@ const moduleMeta = computed(() => {
 
 const activeModuleInfo = computed(() => {
   return dashboardSummary.value?.modules.find(module => module.id === activeTab.value)
+})
+
+const skillTotal = computed(() => {
+  return dashboardDetails.value?.skills.reduce((sum, category) => sum + category.skills.length, 0) ?? 0
+})
+
+const enabledSkillTotal = computed(() => {
+  return dashboardDetails.value?.skills.reduce(
+    (sum, category) => sum + category.skills.filter(skill => skill.enabled).length,
+    0,
+  ) ?? 0
 })
 
 // --- Conversations ---
@@ -234,7 +246,18 @@ function isNavGroupCollapsed(id: string): boolean {
 async function loadDashboardSummary(): Promise<void> {
   dashboardLoading.value = true
   try {
-    dashboardSummary.value = await window.hermes?.dashboard?.summary() ?? null
+    const dashboard = window.hermes?.dashboard
+    if (!dashboard) {
+      dashboardSummary.value = null
+      dashboardDetails.value = null
+      return
+    }
+    const [summary, details] = await Promise.all([
+      dashboard.summary(),
+      dashboard.details(),
+    ])
+    dashboardSummary.value = summary
+    dashboardDetails.value = details
   } finally {
     dashboardLoading.value = false
   }
@@ -1167,6 +1190,121 @@ async function initHermesCliPanel(): Promise<void> {
               </div>
               <p v-if="!dashboardSummary?.logs?.length" class="font-body-sm text-on-surface-variant">未找到 Hermes 日志文件。</p>
             </div>
+          </section>
+
+          <section v-else-if="activeTab === 'profiles'" class="glass-panel mt-6 rounded-xl p-6">
+            <h3 class="font-headline-md text-headline-md text-on-surface">Profile / 用户</h3>
+            <div class="mt-5 grid gap-3">
+              <div
+                v-for="profile in dashboardDetails?.profiles || []"
+                :key="profile.name"
+                class="glass-border grid grid-cols-[minmax(0,1fr)_auto] gap-4 rounded-xl bg-surface-container-low/40 p-4"
+              >
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="font-body-sm font-semibold text-on-surface">{{ profile.name }}</span>
+                    <span v-if="profile.active" class="rounded-full bg-primary/10 px-2 py-0.5 font-mono-status text-mono-status text-primary">active</span>
+                    <span class="rounded-full bg-surface-variant/40 px-2 py-0.5 font-mono-status text-mono-status text-on-surface-variant">{{ profile.kind }}</span>
+                  </div>
+                  <p class="mt-2 truncate font-mono-status text-mono-status text-on-surface-variant">{{ profile.path }}</p>
+                </div>
+                <div class="text-right">
+                  <p class="font-mono-status text-mono-status text-on-surface-variant">model</p>
+                  <p class="max-w-60 truncate font-body-sm text-on-surface">{{ profile.defaultModel || '未配置' }}</p>
+                </div>
+              </div>
+              <p v-if="!dashboardDetails?.profiles?.length" class="font-body-sm text-on-surface-variant">未找到 Hermes profile。</p>
+            </div>
+          </section>
+
+          <section v-else-if="activeTab === 'skills'" class="glass-panel mt-6 rounded-xl p-6">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-headline-md text-headline-md text-on-surface">技能目录</h3>
+                <p class="font-body-sm text-on-surface-variant">当前启用 {{ enabledSkillTotal }} / {{ skillTotal }} 个技能。</p>
+              </div>
+            </div>
+            <div class="mt-5 grid gap-4">
+              <div v-for="category in dashboardDetails?.skills || []" :key="category.name" class="glass-border rounded-xl bg-surface-container-low/40 p-4">
+                <div class="flex items-center justify-between">
+                  <span class="font-body-sm font-semibold text-on-surface">{{ category.name }}</span>
+                  <span class="font-mono-status text-mono-status text-on-surface-variant">{{ category.skills.length }} skills</span>
+                </div>
+                <p v-if="category.description" class="mt-1 font-body-xs text-on-surface-variant">{{ category.description }}</p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <span
+                    v-for="skill in category.skills.slice(0, 16)"
+                    :key="skill.name"
+                    :class="[
+                      'rounded-full px-3 py-1 font-mono-status text-mono-status',
+                      skill.enabled ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error',
+                    ]"
+                    :title="skill.description"
+                  >
+                    {{ skill.name }} · {{ skill.source }}
+                  </span>
+                </div>
+              </div>
+              <p v-if="!dashboardDetails?.skills?.length" class="font-body-sm text-on-surface-variant">当前 profile 没有扫描到 skills 目录。</p>
+            </div>
+          </section>
+
+          <section v-else-if="activeTab === 'plugins'" class="glass-panel mt-6 rounded-xl p-6">
+            <h3 class="font-headline-md text-headline-md text-on-surface">插件目录</h3>
+            <div class="mt-5 grid gap-3">
+              <div v-for="plugin in dashboardDetails?.plugins || []" :key="plugin.path" class="glass-border grid grid-cols-[1fr_auto_auto] gap-4 rounded-xl bg-surface-container-low/40 p-4">
+                <span class="truncate font-body-sm text-on-surface">{{ plugin.name }}</span>
+                <span :class="['font-mono-status text-mono-status', plugin.hasManifest ? 'text-primary' : 'text-on-surface-variant']">
+                  {{ plugin.hasManifest ? 'manifest' : 'folder' }}
+                </span>
+                <span class="font-mono-status text-mono-status text-on-surface-variant">{{ plugin.modified || '未知' }}</span>
+              </div>
+              <p v-if="!dashboardDetails?.plugins?.length" class="font-body-sm text-on-surface-variant">当前 profile 没有扫描到 plugins 目录。</p>
+            </div>
+          </section>
+
+          <section v-else-if="activeTab === 'memory'" class="glass-panel mt-6 rounded-xl p-6">
+            <h3 class="font-headline-md text-headline-md text-on-surface">记忆文件</h3>
+            <div class="mt-5 grid gap-3">
+              <div v-for="file in dashboardDetails?.memory || []" :key="file.section" class="glass-border rounded-xl bg-surface-container-low/40 p-4">
+                <div class="flex items-center justify-between gap-4">
+                  <div>
+                    <span class="font-body-sm font-semibold text-on-surface">{{ file.label }}</span>
+                    <p class="mt-1 truncate font-mono-status text-mono-status text-on-surface-variant">{{ file.path }}</p>
+                  </div>
+                  <span :class="['rounded-full px-3 py-1 font-mono-status text-mono-status', file.exists ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error']">
+                    {{ file.exists ? file.size : 'missing' }}
+                  </span>
+                </div>
+                <p v-if="file.preview" class="mt-3 line-clamp-2 font-body-sm text-on-surface-variant">{{ file.preview }}</p>
+                <p v-else class="mt-3 font-body-sm text-on-surface-variant">{{ file.exists ? '文件为空。' : '文件不存在。' }}</p>
+              </div>
+            </div>
+          </section>
+
+          <section v-else-if="activeTab === 'usage' || activeTab === 'skillsUsage'" class="glass-panel mt-6 rounded-xl p-6">
+            <h3 class="font-headline-md text-headline-md text-on-surface">{{ moduleMeta.label }}</h3>
+            <div class="mt-5 grid grid-cols-4 gap-4">
+              <div class="glass-border rounded-xl bg-surface-container-low/40 p-4">
+                <p class="font-label-caps text-label-caps text-on-surface-variant">Conversations</p>
+                <p class="mt-2 font-headline-md text-headline-md text-on-surface">{{ dashboardDetails?.usage.conversations ?? 0 }}</p>
+              </div>
+              <div class="glass-border rounded-xl bg-surface-container-low/40 p-4">
+                <p class="font-label-caps text-label-caps text-on-surface-variant">Messages</p>
+                <p class="mt-2 font-headline-md text-headline-md text-on-surface">{{ dashboardDetails?.usage.messages ?? 0 }}</p>
+              </div>
+              <div class="glass-border rounded-xl bg-surface-container-low/40 p-4">
+                <p class="font-label-caps text-label-caps text-on-surface-variant">Input Tokens</p>
+                <p class="mt-2 font-headline-md text-headline-md text-on-surface">{{ dashboardDetails?.usage.inputTokens ?? 0 }}</p>
+              </div>
+              <div class="glass-border rounded-xl bg-surface-container-low/40 p-4">
+                <p class="font-label-caps text-label-caps text-on-surface-variant">Output Tokens</p>
+                <p class="mt-2 font-headline-md text-headline-md text-on-surface">{{ dashboardDetails?.usage.outputTokens ?? 0 }}</p>
+              </div>
+            </div>
+            <p class="mt-4 rounded-lg bg-surface-container-high/60 px-4 py-3 font-body-sm text-on-surface-variant">
+              {{ dashboardDetails?.usage.reason || '等待后端数据。' }}
+            </p>
           </section>
 
           <section v-else class="glass-panel mt-6 rounded-xl p-6">

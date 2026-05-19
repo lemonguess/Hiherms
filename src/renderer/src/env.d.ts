@@ -3,6 +3,7 @@ import type {
   AgentRunStarted,
   AgentSendRequest,
   HermesCliResult,
+  HermesDashboardDetails,
   HermesDashboardSummary,
   HermesGatewayStatus,
   HermesLogFile,
@@ -59,6 +60,7 @@ declare global {
         summary: () => Promise<HermesDashboardSummary>
         models: () => Promise<HermesModelGroup[]>
         logs: () => Promise<HermesLogFile[]>
+        details: () => Promise<HermesDashboardDetails>
       }
       media: {
         filePath: (file: File) => string

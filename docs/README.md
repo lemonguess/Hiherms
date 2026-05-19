@@ -10,6 +10,7 @@
 
 <!-- 新条目追加在本注释下方 -->
 
+- [iteration-013 — hermes-backend-modules-and-outfit-regression](iteration-013-hermes-backend-modules-and-outfit-regression.md) — 修复暗黑服装/腿部透明回归；补 dashboard details IPC 与 profile/skills/memory/plugins/usage 只读后端；tests + typecheck + build + Browser smoke 通过
 - [iteration-012 — hermes-web-ui-parity-and-live2d-fixes](iteration-012-hermes-web-ui-parity-and-live2d-fixes.md) — 平滑 Live2D 视线回正 / 暗黑服装 preset / hermes-web-ui 分组导航 + dashboard IPC；tests + typecheck + build + Browser smoke 通过
 - [iteration-011 — web-ui-parity-media-and-layout](iteration-011-web-ui-parity-media-and-layout.md) — 对齐 hermes-web-ui：会话左栏常驻 + 图片附件（导入到 ~/HermesPet_Media/）；typecheck + build 通过
 - [iteration-010 — hermes-cli-hosting](iteration-010-hermes-cli-hosting.md) — 增加 Hermes CLI 托管面板（profile/gateway 管理），不改现有聊天链路；typecheck + build 通过

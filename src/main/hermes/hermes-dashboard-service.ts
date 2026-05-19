@@ -3,8 +3,24 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, join } from 'node:path'
 import { IPC } from '@shared/ipc-channels'
-import type { HermesDashboardModule, HermesDashboardSummary, HermesLogFile, HermesModelGroup } from '@shared/types'
+import type {
+  HermesDashboardDetails,
+  HermesDashboardModule,
+  HermesDashboardSummary,
+  HermesGatewayRow,
+  HermesLogFile,
+  HermesModelGroup,
+} from '@shared/types'
 import { checkHermesCliAvailable, gatewayStatus, listHermesProfiles } from './hermes-cli'
+import {
+  listMemoryFiles,
+  listPluginSummaries,
+  listProfileDetails,
+  listSkillCategories,
+  readDefaultModelForProfile,
+  readUsageSummary,
+  resolveProfileDir,
+} from './hermes-dashboard-readers'
 
 function hermesBaseDir(): string {
   return process.env.HERMES_HOME || join(homedir(), '.hermes')
@@ -20,9 +36,7 @@ function activeProfileName(): string {
 }
 
 function profileDir(profile: string): string {
-  if (!profile || profile === 'default') return hermesBaseDir()
-  const dir = join(hermesBaseDir(), 'profiles', profile)
-  return existsSync(dir) ? dir : hermesBaseDir()
+  return resolveProfileDir(hermesBaseDir(), profile)
 }
 
 function readJson(path: string): unknown {
@@ -34,14 +48,7 @@ function readJson(path: string): unknown {
 }
 
 function readDefaultModel(profile: string): string {
-  try {
-    const content = readFileSync(join(profileDir(profile), 'config.yaml'), 'utf-8')
-    const objectDefault = content.match(/^\s*default:\s*["']?([^"'\n#]+)["']?/m)?.[1]?.trim()
-    if (objectDefault) return objectDefault
-    return content.match(/^\s*model:\s*["']?([^"'\n#]+)["']?/m)?.[1]?.trim() || ''
-  } catch {
-    return ''
-  }
+  return readDefaultModelForProfile(hermesBaseDir(), profile)
 }
 
 function unique(values: string[]): string[] {
@@ -135,13 +142,47 @@ function listLogFilesForProfile(profile: string, userDataPath: string): HermesLo
 function dashboardModules(): HermesDashboardModule[] {
   return [
     { id: 'chat', label: '对话', status: 'available', detail: '本地 Bridge 对话与图片附件已接入' },
+    { id: 'history', label: '历史', status: 'available', detail: '读取 HermesPet 本地会话记录' },
+    { id: 'groupChat', label: '群聊', status: 'planned', detail: 'Hermes group-chat socket 尚未映射到桌宠 IPC' },
+    { id: 'search', label: '搜索', status: 'planned', detail: '待接入会话全文索引' },
+    { id: 'relay', label: '中转站', status: 'planned', detail: '待接入上游 relay / proxy 配置' },
+    { id: 'jobs', label: '任务', status: 'planned', detail: '待接入 hermes-web-ui jobs controller 对应能力' },
+    { id: 'kanban', label: '看板', status: 'planned', detail: '待接入 Hermes kanban service' },
+    { id: 'channels', label: '频道', status: 'planned', detail: '待接入平台 channel 配置' },
     { id: 'gateways', label: '网关', status: 'partial', detail: '支持 profile 级 status/start/stop/restart' },
     { id: 'models', label: '模型', status: 'partial', detail: '从 Hermes profile auth/config 只读发现模型' },
     { id: 'logs', label: '日志', status: 'partial', detail: '从 Hermes profile 日志目录只读列出文件' },
-    { id: 'usage', label: '用量', status: 'planned', detail: '需要读取 Hermes/Web UI usage store 后补图表' },
-    { id: 'skills', label: '技能', status: 'planned', detail: '需要接 Hermes skills/plugins 目录与配置' },
-    { id: 'memory', label: '记忆', status: 'planned', detail: '需要接 profile memory/user/soul 文件' },
+    { id: 'usage', label: '用量', status: 'partial', detail: '显示本地会话规模；token 用量等待 Hermes usage store 接入' },
+    { id: 'skillsUsage', label: '技能用量', status: 'partial', detail: '显示技能清单规模；调用统计等待 Hermes skill usage DB 接入' },
+    { id: 'skills', label: '技能', status: 'available', detail: '扫描当前 profile skills 目录，按 category 展示' },
+    { id: 'plugins', label: '插件', status: 'partial', detail: '扫描当前 profile plugins 目录，展示本地插件概况' },
+    { id: 'memory', label: '记忆', status: 'available', detail: '读取当前 profile MEMORY / USER / SOUL 文件状态' },
+    { id: 'profiles', label: '用户', status: 'available', detail: '读取 Hermes active_profile 与 profiles 目录' },
   ]
+}
+
+async function gatewayRows(activeProfile: string, profiles: string[], cliAvailable: boolean): Promise<HermesGatewayRow[]> {
+  const rows: HermesGatewayRow[] = []
+  for (const profile of unique(['default', ...profiles])) {
+    if (!cliAvailable || profile !== activeProfile) {
+      rows.push({ profile, active: profile === activeProfile, running: null, status: 'unknown' })
+      continue
+    }
+
+    try {
+      const { running, raw } = await gatewayStatus(profile)
+      rows.push({
+        profile,
+        active: true,
+        running,
+        status: running ? 'running' : 'stopped',
+        raw,
+      })
+    } catch {
+      rows.push({ profile, active: true, running: null, status: 'unknown' })
+    }
+  }
+  return rows
 }
 
 export class HermesDashboardService {
@@ -153,6 +194,19 @@ export class HermesDashboardService {
     })
     ipcMain.handle(IPC.HermesDashboard.Logs, async (): Promise<HermesLogFile[]> => {
       return listLogFilesForProfile(activeProfileName(), this.userDataPath)
+    })
+    ipcMain.handle(IPC.HermesDashboard.Details, async (): Promise<HermesDashboardDetails> => {
+      const activeProfile = activeProfileName()
+      const cliAvailable = await checkHermesCliAvailable()
+      const { profiles } = cliAvailable ? await listHermesProfiles() : { profiles: ['default'] }
+      return {
+        profiles: listProfileDetails(hermesBaseDir(), profiles),
+        gateways: await gatewayRows(activeProfile, profiles, cliAvailable),
+        skills: listSkillCategories(hermesBaseDir(), activeProfile),
+        plugins: listPluginSummaries(hermesBaseDir(), activeProfile),
+        memory: listMemoryFiles(hermesBaseDir(), activeProfile),
+        usage: readUsageSummary(this.userDataPath),
+      }
     })
     ipcMain.handle(IPC.HermesDashboard.Summary, async (): Promise<HermesDashboardSummary> => {
       const activeProfile = activeProfileName()
